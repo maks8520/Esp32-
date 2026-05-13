@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>VOSTOK NEXUS v5.1 ULTRA</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>VOSTOK NEXUS v5.1 ULTRA PREMIUM</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="manifest" href="manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
     <div class="noise-overlay"></div>
@@ -15,10 +17,15 @@
     <div class="water-ripple"></div>
 
     <header>
-        <div class="logo">VOSTOK<span>NEXUS</span></div>
-        <div class="connection-status">
-            <span class="status-dot disconnected"></span>
-            <span class="status-text">DISCONNECTED</span>
+        <div class="logo">VOSTOK<span>NEXUS</span> <small>v5.1</small></div>
+        <div class="header-right">
+            <div class="connection-status">
+                <span class="status-dot disconnected"></span>
+                <span class="status-text">DISCONNECTED</span>
+            </div>
+            <div class="battery-status">
+                <span class="bat-icon">⚡</span> 98%
+            </div>
         </div>
     </header>
 
@@ -26,140 +33,241 @@
         <!-- Dashboard Section -->
         <section id="dashboard" class="page active">
             <div class="ai-gauge-container">
-                <canvas id="biteGauge"></canvas>
+                <svg class="ultra-gauge" viewBox="0 0 200 200">
+                    <defs>
+                        <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#7dd3fc;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#d4ff8f;stop-opacity:1" />
+                        </linearGradient>
+                        <filter id="glow">
+                            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+                    <circle class="gauge-bg" cx="100" cy="100" r="85" stroke-width="12" fill="none"/>
+                    <circle class="gauge-fill" id="predictorGauge" cx="100" cy="100" r="85" stroke-width="12" fill="none" stroke-dasharray="534" stroke-dashoffset="534"/>
+                    <circle class="gauge-secondary" id="confidenceGauge" cx="100" cy="100" r="70" stroke-width="6" fill="none" stroke-dasharray="440" stroke-dashoffset="440"/>
+                </svg>
                 <div class="gauge-center">
-                    <div class="predictor-label">AI PREDICTOR</div>
-                    <div class="predictor-value">84%</div>
+                    <div class="predictor-label">AI ACTIVITY</div>
+                    <div class="predictor-value" id="predictorVal">0%</div>
+                    <div class="confidence-label">CONFIDENCE: <span id="confVal">0%</span></div>
                 </div>
             </div>
 
             <div class="rod-cards">
                 <div class="rod-card" id="rod-1">
-                    <div class="rod-header">ROD 01</div>
-                    <div class="rod-visual">
-                        <div class="rod-glow"></div>
+                    <div class="rod-glow-bg"></div>
+                    <div class="rod-header">ROD ALPHA</div>
+                    <div class="rod-visual-container">
+                        <div class="rod-visual">
+                            <div class="rod-glow" id="rod-1-glow"></div>
+                        </div>
                     </div>
-                    <div class="rod-status">IDLE</div>
+                    <div class="rod-footer">
+                        <span class="rod-status" id="rod-1-status">READY</span>
+                        <span class="rod-batt">85%</span>
+                    </div>
                 </div>
                 <div class="rod-card" id="rod-2">
-                    <div class="rod-header">ROD 02</div>
-                    <div class="rod-visual">
-                        <div class="rod-glow"></div>
+                    <div class="rod-glow-bg"></div>
+                    <div class="rod-header">ROD BRAVO</div>
+                    <div class="rod-visual-container">
+                        <div class="rod-visual">
+                            <div class="rod-glow" id="rod-2-glow"></div>
+                        </div>
                     </div>
-                    <div class="rod-status">IDLE</div>
+                    <div class="rod-footer">
+                        <span class="rod-status" id="rod-2-status">READY</span>
+                        <span class="rod-batt">92%</span>
+                    </div>
                 </div>
             </div>
 
-            <div class="meteo-summary">
-                <div class="summary-item">
-                    <span class="label">TEMP</span>
-                    <span class="value" id="dash-temp">--°C</span>
+            <div class="quick-meteo glass-card">
+                <div class="meteo-mini">
+                    <span class="icon">🌡️</span>
+                    <div class="vals"><span class="v" id="dash-temp">24.2</span><span class="u">°C</span></div>
                 </div>
-                <div class="summary-item">
-                    <span class="label">WIND</span>
-                    <span class="value" id="dash-wind">--m/s</span>
+                <div class="meteo-mini">
+                    <span class="icon">💨</span>
+                    <div class="vals"><span class="v" id="dash-wind">4.5</span><span class="u">m/s</span></div>
+                </div>
+                <div class="meteo-mini">
+                    <span class="icon">📍</span>
+                    <div class="vals"><span class="v" id="dash-gps">FIX OK</span></div>
                 </div>
             </div>
         </section>
 
         <!-- Meteo Section -->
         <section id="meteo" class="page">
-            <div class="glass-card full-width">
-                <h2>CURRENT METEO</h2>
-                <div class="meteo-grid">
-                    <div class="meteo-box">
-                        <span class="label">PRESSURE</span>
-                        <span class="value" id="meteo-press">--hPa</span>
-                    </div>
-                    <div class="meteo-box">
-                        <span class="label">HUMIDITY</span>
-                        <span class="value" id="meteo-hum">--%</span>
-                    </div>
+            <div class="meteo-header glass-card">
+                <div class="current-main">
+                    <div class="temp-big">24.2°C</div>
+                    <div class="cond-text">PARTLY CLOUDY</div>
+                </div>
+                <div class="meteo-details">
+                    <div class="det-box"><span>PRESS</span><strong>1013.2</strong></div>
+                    <div class="det-box"><span>HUM</span><strong>45%</strong></div>
+                    <div class="det-box"><span>DEW</span><strong>12°C</strong></div>
                 </div>
             </div>
-            <div class="map-container glass-card">
-                <div class="map-placeholder">WINDY MAP INTEGRATION</div>
-                <div class="map-layers">
-                    <button class="layer-btn active">Wind</button>
-                    <button class="layer-btn">Temp</button>
-                    <button class="layer-btn">Rain</button>
+            <div class="map-wrapper glass-card">
+                <div id="windyMap"></div>
+                <div class="map-controls">
+                    <button class="layer-btn active" data-layer="wind">Wind</button>
+                    <button class="layer-btn" data-layer="temp">Temp</button>
+                    <button class="layer-btn" data-layer="clouds">Cloud</button>
+                    <button class="layer-btn" data-layer="pressure">Press</button>
+                    <button class="layer-btn" data-layer="precip">Rain</button>
                 </div>
+            </div>
+            <div class="wind-direction glass-card">
+                <div class="compass-container">
+                    <div class="compass" id="windArrow">↑</div>
+                </div>
+                <button class="flip-wind">+180° "WHERE TO"</button>
             </div>
         </section>
 
-        <!-- Profile Section -->
+        <!-- Vertical Profile Section -->
         <section id="profile" class="page">
-            <div class="profile-layout">
-                <div class="canvas-container glass-card">
-                    <canvas id="verticalProfile"></canvas>
+            <div class="profile-container glass-card">
+                <div class="chart-header">
+                    <h3>VERTICAL ATMOSPHERE PROFILE</h3>
+                    <div class="chart-legend">
+                        <span class="l-t">TEMP</span>
+                        <span class="l-w">WIND</span>
+                        <span class="l-c">CLOUD</span>
+                    </div>
                 </div>
-                <div class="profile-stats glass-card">
-                    <h3>ATMOSPHERE</h3>
-                    <div class="stat-row"><span>0m</span><span>24°C</span></div>
-                    <div class="stat-row"><span>500m</span><span>21°C</span></div>
-                    <div class="stat-row"><span>1000m</span><span>18°C</span></div>
+                <div class="chart-box">
+                    <canvas id="verticalProfileChart"></canvas>
                 </div>
+            </div>
+            <div class="profile-table glass-card">
+                <table>
+                    <thead><tr><th>ALT</th><th>TEMP</th><th>WIND</th><th>CLOUD</th></tr></thead>
+                    <tbody id="profileData"></tbody>
+                </table>
             </div>
         </section>
 
         <!-- Fishing Section -->
         <section id="fishing" class="page">
-            <div class="bite-timeline glass-card">
-                <h3>BITE TIMELINE</h3>
-                <div class="timeline-visual">
-                    <div class="scanner-line"></div>
+            <div class="bite-timeline-container glass-card">
+                <div class="timeline-header">BITE TIMELINE (LIVE)</div>
+                <div class="timeline-box">
+                    <canvas id="biteTimeline"></canvas>
                 </div>
             </div>
+
+            <div class="catch-form glass-card">
+                <h3>RECORD CATCH</h3>
+                <div class="form-row">
+                    <input type="text" placeholder="Species (or AI Scan)">
+                    <input type="number" placeholder="Weight (kg)">
+                </div>
+                <button class="save-catch">LOG TO SD CARD</button>
+            </div>
+
             <button class="ai-fish-id-btn">
-                <span class="icon">📸</span> AI FISH ID
+                <div class="btn-glow"></div>
+                <span class="icon">📸</span> AI FISH ID SCANNER
             </button>
         </section>
 
         <!-- Settings Section -->
         <section id="settings" class="page">
-            <div class="settings-group glass-card">
-                <h3>CONNECTION</h3>
-                <div class="setting-item">
-                    <span>WebSocket Server</span>
-                    <input type="text" value="ws://192.168.4.1/ws">
+            <div class="settings-scroll">
+                <div class="settings-group glass-card">
+                    <div class="g-header">CONNECTION & NETWORK</div>
+                    <div class="s-item"><span>SSID</span><input type="text" value="VOSTOK_NEXUS"></div>
+                    <div class="s-item"><span>WS ADDR</span><input type="text" value="ws://192.168.4.1/ws"></div>
                 </div>
-            </div>
-            <div class="settings-group glass-card">
-                <h3>CALIBRATION</h3>
-                <div class="setting-item">
-                    <span>Rod Sensitivity</span>
-                    <input type="range" min="0" max="100">
+
+                <div class="settings-group glass-card">
+                    <div class="g-header">SENSOR CALIBRATION</div>
+                    <div class="s-item"><span>Bite Sensitivity</span><input type="range" value="75"></div>
+                    <div class="s-item"><span>Hall Offset</span><input type="range" value="512" max="1024"></div>
+                    <button class="test-sensors">CALIBRATE & TEST</button>
                 </div>
-            </div>
-            <div class="settings-group glass-card danger">
-                <h3>DANGER ZONE</h3>
-                <button class="reset-btn">FACTORY RESET</button>
+
+                <div class="settings-group glass-card">
+                    <div class="g-header">AI / TinyML</div>
+                    <div class="s-item"><span>Model Threshold</span><input type="range" value="85"></div>
+                    <div class="s-item"><span>Predictor Sensitivity</span><input type="range" value="60"></div>
+                </div>
+
+                <div class="settings-group glass-card">
+                    <div class="g-header">OPEN-METEO API</div>
+                    <div class="s-item"><span>API Key (Optional)</span><input type="password" value="••••••••"></div>
+                    <div class="s-item"><span>Interval (min)</span><input type="number" value="15"></div>
+                </div>
+
+                <div class="settings-group glass-card">
+                    <div class="g-header">POWER MANAGEMENT</div>
+                    <div class="s-item"><span>Display Brightness</span><input type="range" value="100"></div>
+                    <div class="s-item"><span>Eco Mode</span><div class="toggle"><input type="checkbox"></div></div>
+                </div>
+
+                <div class="settings-group glass-card">
+                    <div class="g-header">STORAGE (SD CARD)</div>
+                    <div class="storage-info">
+                        <div class="bar"><div class="fill" style="width: 45%;"></div></div>
+                        <span>45% (14.2GB / 32GB)</span>
+                    </div>
+                    <button class="download-logs">DOWNLOAD JSONL LOGS</button>
+                </div>
+
+                <div class="settings-group glass-card">
+                    <div class="g-header">APPEARANCE</div>
+                    <div class="s-item"><span>Glow Intensity</span><input type="range" value="80"></div>
+                    <div class="s-item"><span>Scanline Opacity</span><input type="range" value="10"></div>
+                </div>
+
+                <div class="settings-group glass-card danger">
+                    <div class="g-header">DANGER ZONE</div>
+                    <button class="reset-btn">ERASE ALL DATA</button>
+                    <button class="reset-btn">FACTORY REBOOT</button>
+                </div>
             </div>
         </section>
     </main>
 
     <!-- Navigation -->
     <nav class="bottom-nav">
-        <button class="nav-item active" data-page="dashboard">DASH</button>
-        <button class="nav-item" data-page="meteo">METEO</button>
-        <button class="nav-item" data-page="profile">PROFILE</button>
-        <button class="nav-item" data-page="fishing">FISH</button>
-        <button class="nav-item" data-page="settings">SET</button>
+        <button class="nav-item active" data-page="dashboard"><div class="i">⛯</div>DASH</button>
+        <button class="nav-item" data-page="meteo"><div class="i">☁</div>METEO</button>
+        <button class="nav-item" data-page="profile"><div class="i">⫫</div>PROFILE</button>
+        <button class="nav-item" data-page="fishing"><div class="i">⚓</div>FISH</button>
+        <button class="nav-item" data-page="settings"><div class="i">⚙</div>SET</button>
     </nav>
 
     <!-- Modals -->
     <div id="fishModal" class="modal">
         <div class="modal-content glass-card">
-            <div class="scanning-line"></div>
-            <h2>ANALYZING SPECIMEN...</h2>
+            <div class="scan-frame">
+                <div class="scanning-line"></div>
+                <div class="corners"><span></span><span></span><span></span><span></span></div>
+            </div>
+            <h2>AI SPECIMEN SCANNING...</h2>
             <div class="fish-result hidden">
-                <div class="fish-photo-placeholder"></div>
-                <div class="fish-info">
-                    <p>Species: <span>Zander (Sander lucioperca)</span></p>
-                    <p>Weight: <span>3.2kg</span></p>
-                    <p>Confidence: <span>98.4%</span></p>
+                <div class="fish-photo">
+                    <img src="https://images.unsplash.com/photo-1524704654690-b56c05c78a00?q=80&w=300&auto=format&fit=crop" alt="Fish">
                 </div>
-                <button class="close-modal">DISMISS</button>
+                <div class="fish-info-grid">
+                    <div class="f-box"><span>SPECIES</span><strong>Zander</strong></div>
+                    <div class="f-box"><span>WEIGHT</span><strong>3.42 kg</strong></div>
+                    <div class="f-box"><span>LENGTH</span><strong>68 cm</strong></div>
+                    <div class="f-box"><span>CONF</span><strong>99.2%</strong></div>
+                </div>
+                <div class="ref-obj">Ref Object: 1.5L Bottle detected</div>
+                <button class="close-modal">CONFIRM & SAVE</button>
             </div>
         </div>
     </div>
