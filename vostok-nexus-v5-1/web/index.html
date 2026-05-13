@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VOSTOK NEXUS v5.1 ULTRA</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="noise-overlay"></div>
+    <div class="scanlines"></div>
+    <div class="water-ripple"></div>
+
+    <header>
+        <div class="logo">VOSTOK<span>NEXUS</span></div>
+        <div class="connection-status">
+            <span class="status-dot disconnected"></span>
+            <span class="status-text">DISCONNECTED</span>
+        </div>
+    </header>
+
+    <main id="app-content">
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="page active">
+            <div class="ai-gauge-container">
+                <canvas id="biteGauge"></canvas>
+                <div class="gauge-center">
+                    <div class="predictor-label">AI PREDICTOR</div>
+                    <div class="predictor-value">84%</div>
+                </div>
+            </div>
+
+            <div class="rod-cards">
+                <div class="rod-card" id="rod-1">
+                    <div class="rod-header">ROD 01</div>
+                    <div class="rod-visual">
+                        <div class="rod-glow"></div>
+                    </div>
+                    <div class="rod-status">IDLE</div>
+                </div>
+                <div class="rod-card" id="rod-2">
+                    <div class="rod-header">ROD 02</div>
+                    <div class="rod-visual">
+                        <div class="rod-glow"></div>
+                    </div>
+                    <div class="rod-status">IDLE</div>
+                </div>
+            </div>
+
+            <div class="meteo-summary">
+                <div class="summary-item">
+                    <span class="label">TEMP</span>
+                    <span class="value" id="dash-temp">--°C</span>
+                </div>
+                <div class="summary-item">
+                    <span class="label">WIND</span>
+                    <span class="value" id="dash-wind">--m/s</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Meteo Section -->
+        <section id="meteo" class="page">
+            <div class="glass-card full-width">
+                <h2>CURRENT METEO</h2>
+                <div class="meteo-grid">
+                    <div class="meteo-box">
+                        <span class="label">PRESSURE</span>
+                        <span class="value" id="meteo-press">--hPa</span>
+                    </div>
+                    <div class="meteo-box">
+                        <span class="label">HUMIDITY</span>
+                        <span class="value" id="meteo-hum">--%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="map-container glass-card">
+                <div class="map-placeholder">WINDY MAP INTEGRATION</div>
+                <div class="map-layers">
+                    <button class="layer-btn active">Wind</button>
+                    <button class="layer-btn">Temp</button>
+                    <button class="layer-btn">Rain</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Profile Section -->
+        <section id="profile" class="page">
+            <div class="profile-layout">
+                <div class="canvas-container glass-card">
+                    <canvas id="verticalProfile"></canvas>
+                </div>
+                <div class="profile-stats glass-card">
+                    <h3>ATMOSPHERE</h3>
+                    <div class="stat-row"><span>0m</span><span>24°C</span></div>
+                    <div class="stat-row"><span>500m</span><span>21°C</span></div>
+                    <div class="stat-row"><span>1000m</span><span>18°C</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Fishing Section -->
+        <section id="fishing" class="page">
+            <div class="bite-timeline glass-card">
+                <h3>BITE TIMELINE</h3>
+                <div class="timeline-visual">
+                    <div class="scanner-line"></div>
+                </div>
+            </div>
+            <button class="ai-fish-id-btn">
+                <span class="icon">📸</span> AI FISH ID
+            </button>
+        </section>
+
+        <!-- Settings Section -->
+        <section id="settings" class="page">
+            <div class="settings-group glass-card">
+                <h3>CONNECTION</h3>
+                <div class="setting-item">
+                    <span>WebSocket Server</span>
+                    <input type="text" value="ws://192.168.4.1/ws">
+                </div>
+            </div>
+            <div class="settings-group glass-card">
+                <h3>CALIBRATION</h3>
+                <div class="setting-item">
+                    <span>Rod Sensitivity</span>
+                    <input type="range" min="0" max="100">
+                </div>
+            </div>
+            <div class="settings-group glass-card danger">
+                <h3>DANGER ZONE</h3>
+                <button class="reset-btn">FACTORY RESET</button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Navigation -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" data-page="dashboard">DASH</button>
+        <button class="nav-item" data-page="meteo">METEO</button>
+        <button class="nav-item" data-page="profile">PROFILE</button>
+        <button class="nav-item" data-page="fishing">FISH</button>
+        <button class="nav-item" data-page="settings">SET</button>
+    </nav>
+
+    <!-- Modals -->
+    <div id="fishModal" class="modal">
+        <div class="modal-content glass-card">
+            <div class="scanning-line"></div>
+            <h2>ANALYZING SPECIMEN...</h2>
+            <div class="fish-result hidden">
+                <div class="fish-photo-placeholder"></div>
+                <div class="fish-info">
+                    <p>Species: <span>Zander (Sander lucioperca)</span></p>
+                    <p>Weight: <span>3.2kg</span></p>
+                    <p>Confidence: <span>98.4%</span></p>
+                </div>
+                <button class="close-modal">DISMISS</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
