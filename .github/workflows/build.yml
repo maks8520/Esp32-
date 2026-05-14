@@ -16,6 +16,15 @@ jobs:
         with:
           submodules: 'recursive'
 
+      - name: Cache ESP-IDF components
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.espressif
+            vostok-nexus-v5-1/managed_components
+            vostok-nexus-v5-1/dependencies.lock
+          key: ${{ runner.os }}-esp-idf-base-${{ hashFiles('vostok-nexus-v5-1/main/idf_component.yml') }}
+
       - name: Build Base Station (ESP32-S3)
         working-directory: vostok-nexus-v5-1
         run: |
@@ -29,8 +38,8 @@ jobs:
           name: base-station-firmware
           path: |
             vostok-nexus-v5-1/build/*.bin
-            vostok-nexus-v5-1/build/bootloader/bootloader.bin
-            vostok-nexus-v5-1/build/partition_table/partition-table.bin
+            vostok-nexus-v5-1/build/bootloader/*.bin
+            vostok-nexus-v5-1/build/partition_table/*.bin
 
   build-rod:
     runs-on: ubuntu-latest
@@ -40,6 +49,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+
+      - name: Cache ESP-IDF components
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.espressif
+            vostok-nexus-v5-1/rod_firmware/managed_components
+            vostok-nexus-v5-1/rod_firmware/dependencies.lock
+          key: ${{ runner.os }}-esp-idf-rod-${{ hashFiles('vostok-nexus-v5-1/rod_firmware/main/idf_component.yml') }}
 
       - name: Build Rod Station (ESP32-C3)
         working-directory: vostok-nexus-v5-1/rod_firmware
@@ -54,5 +72,5 @@ jobs:
           name: rod-station-firmware
           path: |
             vostok-nexus-v5-1/rod_firmware/build/*.bin
-            vostok-nexus-v5-1/rod_firmware/build/bootloader/bootloader.bin
-            vostok-nexus-v5-1/rod_firmware/build/partition_table/partition-table.bin
+            vostok-nexus-v5-1/rod_firmware/build/bootloader/*.bin
+            vostok-nexus-v5-1/rod_firmware/build/partition_table/*.bin

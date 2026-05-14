@@ -22,3 +22,6 @@
 - **Glassmorphism 2.0**: Премиальный дизайн с эффектом матового стекла.
 - **Windy Map**: Центрирование карты по GPS NEO-7M.
 - **Haptics**: Виброотклик смартфона при поклевке.
+
+## Примечание по сборке
+Этот проект использует [IDF Component Manager](https://docs.espressif.com/projects/idf-component-manager/). Зависимости (например, `esp-now`) скачиваются автоматически при первом запуске `idf.py build`.
