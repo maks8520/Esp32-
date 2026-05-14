@@ -1,0 +1,2 @@
+dependencies:
+  espressif/esp-now: "^2.5.3"
