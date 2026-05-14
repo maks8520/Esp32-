@@ -1,22 +1,18 @@
 # VOSTOK NEXUS v5.1 ULTRA PREMIUM - Development Log
 
-## Palette (UX & Accessibility)
-- **Haptics:** Integrated `navigator.vibrate` for critical bite alerts (`[100, 50, 100]`) and UI confirmations.
-- **Feedback:** Added loading states and spinners for the Windy map and AI Fish ID modules.
-- **A11y:** Implemented semantic HTML5 tags, ARIA labels for all interactive elements, and `role="status"` for the connection indicator.
-- **Robustness:** Added "Irreversible Action" confirmation modals for SD card erasing and system reboots.
+## Intelligence Enhancements (Context7)
+Using Context7 documentation for ESP-IDF v5.x, I implemented:
+- **Dual-Core Task Pinning:** Core 0 is now dedicated to low-latency telemetry (ESP-NOW and Sensors), while Core 1 handles the high-level network stack (Wi-Fi, HTTP, WebSockets).
+- **Ring Buffer Optimization:** Vertical profile data is now managed via a ring buffer in SPIRAM, preventing heap fragmentation and ensuring efficient O(1) data updates.
+- **Secure NVS:** Followed the latest encryption/storage patterns to isolate the Windy API key and Wi-Fi credentials from the main binary.
 
-## Bolt (Performance)
-- **High-FPS:** Utilized `requestAnimationFrame` for all UI animations (SVG gauges, water ripples, rod wobbles) ensuring a smooth 60fps experience.
-- **Network Thrift:** Implemented 300ms debouncing on settings sliders to prevent saturating the ESP32 WebSocket buffer.
-- **Lazy Loading:** Windy Map assets (Leaflet JS/CSS) are only loaded upon navigating to the Meteo tab.
-- **Firmware Multi-Core:**
-  - Core 0: Web Server, WebSocket Handling, and SD Logging.
-  - Core 1: ESP-NOW Packet Processing and Sensor Fusion.
-- **Memory Management:** Large weather profile arrays are allocated in PSRAM via `MALLOC_CAP_SPIRAM`.
+## Visual Fidelity (Stitch)
+The Stitch design engine was used to generate the **Glassmorphism 2.0** specification:
+- **Depth & Refraction:** Implemented a 25px backdrop-blur combined with a 1.12px border (`rgba(255,255,255,0.12)`) to simulate physical glass layers.
+- **Industrial Accents:** Applied Lime (#d4ff8f) and Cyan (#7dd3fc) with outer glow filters for a futuristic dashboard look.
+- **UX Flow:** Added "Loading Skeletons" for the map module to ensure the UI feels responsive even before external assets are loaded.
 
-## Sentinel (Security & Robustness)
-- **Secret Management:** Removed hardcoded API keys from the frontend. The Windy key is fetched securely from the ESP32's protected NVS on socket connection.
-- **Data Integrity:** SD card logs use the JSONL format with Fletcher-32 checksums to ensure data can be validated after power loss.
-- **Input Sanitization:** Added `maxlength` and type validation to all form fields and settings inputs.
-- **Queue Protection:** Integrated lock-free queues between the ESP-NOW receiver (ISR-like context) and the processing tasks to prevent packet loss.
+## Performance & Security
+- **Haptics:** Rhythmic vibration alerts for fish strikes.
+- **Animations:** 60fps animations via `requestAnimationFrame`.
+- **Integrity:** Fletcher-32 checksums for telemetry logs to ensure SD card persistence reliability.
