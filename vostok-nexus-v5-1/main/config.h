@@ -3,49 +3,38 @@
 
 #include <stdint.h>
 
-/* WIFI & Network */
+/* WiFi и Сеть */
 #define WIFI_SSID           "VOSTOK_NEXUS_V5"
 #define WIFI_PASS           "ultra_premium"
 #define WS_SERVER_PORT      80
 
-/* ESP-NOW Config */
+/* Конфигурация ESP-NOW */
 #define ESPNOW_CHANNEL      1
 #define ROD_COUNT           2
 
-/* NVS Namespaces & Keys */
+/* NVS Пространства имен и ключи */
 #define NVS_NAMESPACE       "vostok"
 #define NVS_KEY_WINDY       "windy_key"
+#define WINDY_API_KEY_DEF   "WBCzKeL9AXVHOrcZ4ViyvqpdID2r25LL"
 
-/* GPIO Pins - Base (ESP32-S3) */
+/* Пины - Base (ESP32-S3) */
 #define PIN_I2C_SDA         4
 #define PIN_I2C_SCL         5
-#define PIN_GPS_RX          16
-#define PIN_GPS_TX          17
-#define PIN_DS18B20         18
-#define PIN_WS2812          48
-#define PIN_BUZZER          21
-#define PIN_BTN_1           0
-#define PIN_BTN_2           1
-#define PIN_SD_MISO         13
+#define PIN_GPS_TX          1
+#define PIN_GPS_RX          2
 #define PIN_SD_MOSI         11
+#define PIN_SD_MISO         13
 #define PIN_SD_CLK          12
 #define PIN_SD_CS           10
+#define PIN_DS18B20         14
+#define PIN_WS2812          48
+#define PIN_BUZZER          45
 
-/* Task Configurations */
-#define TASK_STACK_SIZE_CORE0  8192
-#define TASK_STACK_SIZE_CORE1  8192
-#define LOG_QUEUE_SIZE         100
+/* Настройки задач */
+#define TASK_STACK_SIZE     4096
+#define LOG_QUEUE_SIZE      50
 
-/* Data Structures */
-typedef struct {
-    float temp;
-    float press;
-    float hum;
-    float lat;
-    float lon;
-    float alt;
-} base_data_t;
-
+/* Структуры данных */
 typedef struct {
     uint8_t rod_id;
     float accel_x;
@@ -57,7 +46,6 @@ typedef struct {
 
 typedef struct {
     char data[256];
-    uint32_t checksum;
 } log_msg_t;
 
 #endif

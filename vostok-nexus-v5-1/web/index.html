@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -8,28 +8,25 @@
     <link rel="manifest" href="manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
     <div class="noise-overlay" aria-hidden="true"></div>
     <div class="scanlines" aria-hidden="true"></div>
-    <div class="water-ripple" aria-hidden="true"></div>
 
     <header>
         <div class="logo">VOSTOK<span>NEXUS</span> <small>v5.1</small></div>
-        <div class="header-right">
-            <div class="connection-status">
-                <span class="status-dot disconnected" role="status" aria-label="System Disconnected"></span>
-                <span class="status-text">DISCONNECTED</span>
-            </div>
+        <div class="status-indicator">
+            <span class="status-dot disconnected" role="status" aria-label="Статус системы"></span>
         </div>
     </header>
 
     <main id="app-content">
-        <!-- Dashboard Section -->
-        <section id="dashboard" class="page active" aria-labelledby="dash-heading">
-            <h1 id="dash-heading" class="sr-only">Main Dashboard</h1>
+        <!-- Dashboard -->
+        <section id="dashboard" class="page active">
             <div class="ai-gauge-container">
-                <svg class="ultra-gauge" viewBox="0 0 200 200" aria-label="AI Activity Prediction Gauge">
+                <svg class="ultra-gauge" viewBox="0 0 200 200">
                     <defs>
                         <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                             <stop offset="0%" style="stop-color:#7dd3fc;stop-opacity:1" />
@@ -40,68 +37,40 @@
                     <circle class="gauge-fill" id="predictorGauge" cx="100" cy="100" r="85" stroke-width="12" fill="none" stroke-dasharray="534" stroke-dashoffset="534"/>
                 </svg>
                 <div class="gauge-center">
-                    <div class="predictor-label" aria-hidden="true">AI ACTIVITY</div>
+                    <div class="predictor-label">AI BITE PREDICTOR</div>
                     <div class="predictor-value" id="predictorVal">0%</div>
                 </div>
             </div>
 
             <div class="rod-cards">
-                <div class="rod-card glass-card" id="rod-1" aria-label="Telemetry for Rod Alpha">
-                    <div class="rod-header">ROD ALPHA</div>
-                    <div class="rod-visual-container">
-                        <div class="rod-visual">
-                            <div class="rod-glow" id="rod-1-glow"></div>
-                        </div>
-                    </div>
+                <div class="rod-card glass-card" id="rod-1">
+                    <div class="rod-header">ROD 01</div>
                     <div class="rod-status" id="rod-1-status">READY</div>
                 </div>
-                <div class="rod-card glass-card" id="rod-2" aria-label="Telemetry for Rod Bravo">
-                    <div class="rod-header">ROD BRAVO</div>
-                    <div class="rod-visual-container">
-                        <div class="rod-visual">
-                            <div class="rod-glow" id="rod-2-glow"></div>
-                        </div>
-                    </div>
+                <div class="rod-card glass-card" id="rod-2">
+                    <div class="rod-header">ROD 02</div>
                     <div class="rod-status" id="rod-2-status">READY</div>
                 </div>
             </div>
-
-            <div class="quick-meteo glass-card">
-                <div class="meteo-mini">
-                    <span class="val" id="dash-temp">--.-</span><span class="unit">°C</span>
-                </div>
-            </div>
         </section>
 
-        <!-- Meteo Section -->
-        <section id="meteo" class="page" aria-labelledby="meteo-heading">
-            <h1 id="meteo-heading" class="sr-only">Meteorology and Orbital Maps</h1>
-            <div class="map-wrapper glass-card">
-                <div id="windyMap" style="height: 300px; width: 100%;">
-                    <!-- Loading Skeleton -->
-                    <div class="skeleton" style="height: 100%; width: 100%;"></div>
-                </div>
-                <div class="map-controls">
-                    <button class="layer-btn active" data-layer="wind" aria-label="Switch to Wind Layer">Wind</button>
-                    <button class="layer-btn" data-layer="temp" aria-label="Switch to Temp Layer">Temp</button>
-                    <button class="layer-btn" data-layer="clouds" aria-label="Switch to Cloud Layer">Cloud</button>
-                </div>
-            </div>
+        <!-- Meteo -->
+        <section id="meteo" class="page">
+            <div id="windyMap" class="glass-card"></div>
         </section>
 
-        <!-- Profile Section -->
-        <section id="profile" class="page" aria-labelledby="profile-heading">
-            <h1 id="profile-heading" class="sr-only">Vertical Atmospheric Profile</h1>
-            <div class="chart-container glass-card" style="padding: 15px;">
-                <canvas id="profileChart" style="height: 300px;"></canvas>
+        <!-- Profile -->
+        <section id="profile" class="page">
+            <div class="glass-card" style="padding: 20px;">
+                <canvas id="meteoProfileChart" style="height: 300px;"></canvas>
             </div>
         </section>
     </main>
 
     <nav class="bottom-nav">
-        <button class="nav-item active" data-page="dashboard" aria-label="Dashboard Tab"><div class="i">⛯</div>DASH</button>
-        <button class="nav-item" data-page="meteo" aria-label="Meteo Map Tab"><div class="i">☁</div>METEO</button>
-        <button class="nav-item" data-page="profile" aria-label="Atmosphere Tab"><div class="i">⫫</div>PROFILE</button>
+        <button class="nav-item active" data-page="dashboard">DASH</button>
+        <button class="nav-item" data-page="meteo">MAP</button>
+        <button class="nav-item" data-page="profile">PROFILE</button>
     </nav>
 
     <script src="script.js"></script>
