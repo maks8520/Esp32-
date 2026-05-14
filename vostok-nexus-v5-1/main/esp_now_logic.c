@@ -64,6 +64,7 @@ void espnow_processing_task(void *pvParameters) {
 }
 
 esp_err_t espnow_init_base(void) {
+    ESP_LOGI(TAG, "ESP-NOW Initializing...");
     espnow_data_queue = xQueueCreate(20, sizeof(espnow_event_t));
     esp_err_t ret = esp_now_init();
     if (ret != ESP_OK) return ret;
