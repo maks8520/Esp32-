@@ -8,22 +8,20 @@
     <link rel="manifest" href="manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
-    <div class="noise-overlay"></div>
-    <div class="scanlines"></div>
-    <div class="water-ripple"></div>
+    <div class="noise-overlay" aria-hidden="true"></div>
+    <div class="scanlines" aria-hidden="true"></div>
+    <div class="water-ripple" aria-hidden="true"></div>
 
     <header>
         <div class="logo">VOSTOK<span>NEXUS</span> <small>v5.1</small></div>
         <div class="header-right">
             <div class="connection-status">
-                <span class="status-dot disconnected"></span>
+                <span class="status-dot disconnected" role="status" aria-label="Connection Status"></span>
                 <span class="status-text">DISCONNECTED</span>
             </div>
-            <div class="battery-status">
+            <div class="battery-status" aria-label="Battery Level">
                 <span class="bat-icon">⚡</span> 98%
             </div>
         </div>
@@ -31,21 +29,15 @@
 
     <main id="app-content">
         <!-- Dashboard Section -->
-        <section id="dashboard" class="page active">
+        <section id="dashboard" class="page active" aria-labelledby="dash-title">
+            <h1 id="dash-title" class="sr-only">Dashboard</h1>
             <div class="ai-gauge-container">
-                <svg class="ultra-gauge" viewBox="0 0 200 200">
+                <svg class="ultra-gauge" viewBox="0 0 200 200" aria-label="AI Activity Gauge">
                     <defs>
                         <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                             <stop offset="0%" style="stop-color:#7dd3fc;stop-opacity:1" />
                             <stop offset="100%" style="stop-color:#d4ff8f;stop-opacity:1" />
                         </linearGradient>
-                        <filter id="glow">
-                            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                            <feMerge>
-                                <feMergeNode in="coloredBlur"/>
-                                <feMergeNode in="SourceGraphic"/>
-                            </feMerge>
-                        </filter>
                     </defs>
                     <circle class="gauge-bg" cx="100" cy="100" r="85" stroke-width="12" fill="none"/>
                     <circle class="gauge-fill" id="predictorGauge" cx="100" cy="100" r="85" stroke-width="12" fill="none" stroke-dasharray="534" stroke-dashoffset="534"/>
@@ -59,7 +51,7 @@
             </div>
 
             <div class="rod-cards">
-                <div class="rod-card" id="rod-1">
+                <div class="rod-card" id="rod-1" aria-label="Rod Alpha telemetry">
                     <div class="rod-glow-bg"></div>
                     <div class="rod-header">ROD ALPHA</div>
                     <div class="rod-visual-container">
@@ -72,7 +64,7 @@
                         <span class="rod-batt">85%</span>
                     </div>
                 </div>
-                <div class="rod-card" id="rod-2">
+                <div class="rod-card" id="rod-2" aria-label="Rod Bravo telemetry">
                     <div class="rod-glow-bg"></div>
                     <div class="rod-header">ROD BRAVO</div>
                     <div class="rod-visual-container">
@@ -89,22 +81,23 @@
 
             <div class="quick-meteo glass-card">
                 <div class="meteo-mini">
-                    <span class="icon">🌡️</span>
+                    <span class="icon" aria-hidden="true">🌡️</span>
                     <div class="vals"><span class="v" id="dash-temp">24.2</span><span class="u">°C</span></div>
                 </div>
                 <div class="meteo-mini">
-                    <span class="icon">💨</span>
+                    <span class="icon" aria-hidden="true">💨</span>
                     <div class="vals"><span class="v" id="dash-wind">4.5</span><span class="u">m/s</span></div>
                 </div>
                 <div class="meteo-mini">
-                    <span class="icon">📍</span>
+                    <span class="icon" aria-hidden="true">📍</span>
                     <div class="vals"><span class="v" id="dash-gps">FIX OK</span></div>
                 </div>
             </div>
         </section>
 
         <!-- Meteo Section -->
-        <section id="meteo" class="page">
+        <section id="meteo" class="page" aria-labelledby="meteo-title">
+            <h1 id="meteo-title" class="sr-only">Meteorology</h1>
             <div class="meteo-header glass-card">
                 <div class="current-main">
                     <div class="temp-big">24.2°C</div>
@@ -117,25 +110,31 @@
                 </div>
             </div>
             <div class="map-wrapper glass-card">
-                <div id="windyMap"></div>
+                <div id="windyMap" aria-label="Interactive Wind Map">
+                    <div class="map-loading-spinner">
+                        <div class="spinner"></div>
+                        <span>Loading Windy Map...</span>
+                    </div>
+                </div>
                 <div class="map-controls">
-                    <button class="layer-btn active" data-layer="wind">Wind</button>
-                    <button class="layer-btn" data-layer="temp">Temp</button>
-                    <button class="layer-btn" data-layer="clouds">Cloud</button>
-                    <button class="layer-btn" data-layer="pressure">Press</button>
-                    <button class="layer-btn" data-layer="precip">Rain</button>
+                    <button class="layer-btn active" data-layer="wind" aria-label="Show Wind Layer">Wind</button>
+                    <button class="layer-btn" data-layer="temp" aria-label="Show Temperature Layer">Temp</button>
+                    <button class="layer-btn" data-layer="clouds" aria-label="Show Cloud Layer">Cloud</button>
+                    <button class="layer-btn" data-layer="pressure" aria-label="Show Pressure Layer">Press</button>
+                    <button class="layer-btn" data-layer="precip" aria-label="Show Rain Layer">Rain</button>
                 </div>
             </div>
             <div class="wind-direction glass-card">
                 <div class="compass-container">
-                    <div class="compass" id="windArrow">↑</div>
+                    <div class="compass" id="windArrow" aria-label="Wind Direction">↑</div>
                 </div>
-                <button class="flip-wind">+180° "WHERE TO"</button>
+                <button class="flip-wind" aria-label="Flip wind direction 180 degrees">+180° "WHERE TO"</button>
             </div>
         </section>
 
         <!-- Vertical Profile Section -->
-        <section id="profile" class="page">
+        <section id="profile" class="page" aria-labelledby="profile-title">
+            <h1 id="profile-title" class="sr-only">Vertical Profile</h1>
             <div class="profile-container glass-card">
                 <div class="chart-header">
                     <h3>VERTICAL ATMOSPHERE PROFILE</h3>
@@ -146,7 +145,7 @@
                     </div>
                 </div>
                 <div class="chart-box">
-                    <canvas id="verticalProfileChart"></canvas>
+                    <canvas id="verticalProfileChart" aria-label="Atmospheric Profile Chart"></canvas>
                 </div>
             </div>
             <div class="profile-table glass-card">
@@ -158,82 +157,57 @@
         </section>
 
         <!-- Fishing Section -->
-        <section id="fishing" class="page">
+        <section id="fishing" class="page" aria-labelledby="fishing-title">
+            <h1 id="fishing-title" class="sr-only">Fishing Logs</h1>
             <div class="bite-timeline-container glass-card">
                 <div class="timeline-header">BITE TIMELINE (LIVE)</div>
                 <div class="timeline-box">
-                    <canvas id="biteTimeline"></canvas>
+                    <canvas id="biteTimeline" aria-label="Live Bite Timeline Chart"></canvas>
                 </div>
             </div>
 
             <div class="catch-form glass-card">
                 <h3>RECORD CATCH</h3>
                 <div class="form-row">
-                    <input type="text" placeholder="Species (or AI Scan)">
-                    <input type="number" placeholder="Weight (kg)">
+                    <input type="text" id="catch-species" placeholder="Species (or AI Scan)" maxlength="32">
+                    <input type="number" id="catch-weight" placeholder="Weight (kg)" step="0.01" max="1000">
                 </div>
-                <button class="save-catch">LOG TO SD CARD</button>
+                <button class="save-catch" aria-label="Save catch data to SD card">LOG TO SD CARD</button>
             </div>
 
-            <button class="ai-fish-id-btn">
+            <button class="ai-fish-id-btn" aria-label="Trigger AI Fish Species Identification">
                 <div class="btn-glow"></div>
                 <span class="icon">📸</span> AI FISH ID SCANNER
             </button>
         </section>
 
         <!-- Settings Section -->
-        <section id="settings" class="page">
+        <section id="settings" class="page" aria-labelledby="settings-title">
+            <h1 id="settings-title" class="sr-only">Settings</h1>
             <div class="settings-scroll">
                 <div class="settings-group glass-card">
                     <div class="g-header">CONNECTION & NETWORK</div>
-                    <div class="s-item"><span>SSID</span><input type="text" value="VOSTOK_NEXUS"></div>
-                    <div class="s-item"><span>WS ADDR</span><input type="text" value="ws://192.168.4.1/ws"></div>
+                    <div class="s-item"><span>SSID</span><input type="text" id="set-ssid" value="VOSTOK_NEXUS" maxlength="32"></div>
+                    <div class="s-item"><span>WS ADDR</span><input type="text" id="set-ws" value="ws://192.168.4.1/ws" maxlength="64"></div>
                 </div>
 
                 <div class="settings-group glass-card">
                     <div class="g-header">SENSOR CALIBRATION</div>
-                    <div class="s-item"><span>Bite Sensitivity</span><input type="range" value="75"></div>
-                    <div class="s-item"><span>Hall Offset</span><input type="range" value="512" max="1024"></div>
+                    <div class="s-item"><span>Bite Sensitivity</span><input type="range" class="debounced-slider" id="set-sens" value="75"></div>
+                    <div class="s-item"><span>Hall Offset</span><input type="range" class="debounced-slider" id="set-hall" value="512" max="1024"></div>
                     <button class="test-sensors">CALIBRATE & TEST</button>
                 </div>
 
                 <div class="settings-group glass-card">
-                    <div class="g-header">AI / TinyML</div>
-                    <div class="s-item"><span>Model Threshold</span><input type="range" value="85"></div>
-                    <div class="s-item"><span>Predictor Sensitivity</span><input type="range" value="60"></div>
-                </div>
-
-                <div class="settings-group glass-card">
-                    <div class="g-header">OPEN-METEO API</div>
-                    <div class="s-item"><span>API Key (Optional)</span><input type="password" value="••••••••"></div>
-                    <div class="s-item"><span>Interval (min)</span><input type="number" value="15"></div>
-                </div>
-
-                <div class="settings-group glass-card">
-                    <div class="g-header">POWER MANAGEMENT</div>
-                    <div class="s-item"><span>Display Brightness</span><input type="range" value="100"></div>
-                    <div class="s-item"><span>Eco Mode</span><div class="toggle"><input type="checkbox"></div></div>
-                </div>
-
-                <div class="settings-group glass-card">
-                    <div class="g-header">STORAGE (SD CARD)</div>
-                    <div class="storage-info">
-                        <div class="bar"><div class="fill" style="width: 45%;"></div></div>
-                        <span>45% (14.2GB / 32GB)</span>
-                    </div>
-                    <button class="download-logs">DOWNLOAD JSONL LOGS</button>
-                </div>
-
-                <div class="settings-group glass-card">
                     <div class="g-header">APPEARANCE</div>
-                    <div class="s-item"><span>Glow Intensity</span><input type="range" value="80"></div>
-                    <div class="s-item"><span>Scanline Opacity</span><input type="range" value="10"></div>
+                    <div class="s-item"><span>Glow Intensity</span><input type="range" class="debounced-slider" id="set-glow" value="80"></div>
+                    <div class="s-item"><span>Scanline Opacity</span><input type="range" class="debounced-slider" id="set-scan" value="10"></div>
                 </div>
 
                 <div class="settings-group glass-card danger">
                     <div class="g-header">DANGER ZONE</div>
-                    <button class="reset-btn">ERASE ALL DATA</button>
-                    <button class="reset-btn">FACTORY REBOOT</button>
+                    <button class="reset-btn" id="btn-erase" aria-label="Erase all data from SD card">ERASE SD CARD</button>
+                    <button class="reset-btn" id="btn-reboot" aria-label="Reboot the system">FACTORY REBOOT</button>
                 </div>
             </div>
         </section>
@@ -241,32 +215,44 @@
 
     <!-- Navigation -->
     <nav class="bottom-nav">
-        <button class="nav-item active" data-page="dashboard"><div class="i">⛯</div>DASH</button>
-        <button class="nav-item" data-page="meteo"><div class="i">☁</div>METEO</button>
-        <button class="nav-item" data-page="profile"><div class="i">⫫</div>PROFILE</button>
-        <button class="nav-item" data-page="fishing"><div class="i">⚓</div>FISH</button>
-        <button class="nav-item" data-page="settings"><div class="i">⚙</div>SET</button>
+        <button class="nav-item active" data-page="dashboard" aria-label="Dashboard Tab"><div class="i">⛯</div>DASH</button>
+        <button class="nav-item" data-page="meteo" aria-label="Meteorology Tab"><div class="i">☁</div>METEO</button>
+        <button class="nav-item" data-page="profile" aria-label="Atmospheric Profile Tab"><div class="i">⫫</div>PROFILE</button>
+        <button class="nav-item" data-page="fishing" aria-label="Fishing Tools Tab"><div class="i">⚓</div>FISH</button>
+        <button class="nav-item" data-page="settings" aria-label="Settings Tab"><div class="i">⚙</div>SET</button>
     </nav>
 
     <!-- Modals -->
+    <div id="confirmModal" class="modal" role="alertdialog" aria-labelledby="modal-title">
+        <div class="modal-content glass-card">
+            <h2 id="modal-title">ARE YOU SURE?</h2>
+            <p id="modal-desc">This action is irreversible.</p>
+            <div class="modal-actions">
+                <button class="btn-cancel">CANCEL</button>
+                <button class="btn-confirm danger">CONFIRM</button>
+            </div>
+        </div>
+    </div>
+
     <div id="fishModal" class="modal">
         <div class="modal-content glass-card">
             <div class="scan-frame">
                 <div class="scanning-line"></div>
                 <div class="corners"><span></span><span></span><span></span><span></span></div>
+                <div class="scan-loader">
+                    <div class="spinner"></div>
+                </div>
             </div>
             <h2>AI SPECIMEN SCANNING...</h2>
             <div class="fish-result hidden">
                 <div class="fish-photo">
-                    <img src="https://images.unsplash.com/photo-1524704654690-b56c05c78a00?q=80&w=300&auto=format&fit=crop" alt="Fish">
+                    <img src="https://images.unsplash.com/photo-1524704654690-b56c05c78a00?q=80&w=300&auto=format&fit=crop" alt="Fish Result">
                 </div>
                 <div class="fish-info-grid">
                     <div class="f-box"><span>SPECIES</span><strong>Zander</strong></div>
                     <div class="f-box"><span>WEIGHT</span><strong>3.42 kg</strong></div>
-                    <div class="f-box"><span>LENGTH</span><strong>68 cm</strong></div>
                     <div class="f-box"><span>CONF</span><strong>99.2%</strong></div>
                 </div>
-                <div class="ref-obj">Ref Object: 1.5L Bottle detected</div>
                 <button class="close-modal">CONFIRM & SAVE</button>
             </div>
         </div>

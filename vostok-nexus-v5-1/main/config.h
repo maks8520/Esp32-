@@ -1,6 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <stdint.h>
+
 /* WIFI & Network */
 #define WIFI_SSID           "VOSTOK_NEXUS_V5"
 #define WIFI_PASS           "ultra_premium"
@@ -9,6 +11,10 @@
 /* ESP-NOW Config */
 #define ESPNOW_CHANNEL      1
 #define ROD_COUNT           2
+
+/* NVS Namespaces & Keys */
+#define NVS_NAMESPACE       "vostok"
+#define NVS_KEY_WINDY       "windy_key"
 
 /* GPIO Pins - Base (ESP32-S3) */
 #define PIN_I2C_SDA         4
@@ -24,6 +30,11 @@
 #define PIN_SD_MOSI         11
 #define PIN_SD_CLK          12
 #define PIN_SD_CS           10
+
+/* Task Configurations */
+#define TASK_STACK_SIZE_CORE0  8192
+#define TASK_STACK_SIZE_CORE1  8192
+#define LOG_QUEUE_SIZE         100
 
 /* Data Structures */
 typedef struct {
@@ -43,5 +54,10 @@ typedef struct {
     uint16_t hall_val;
     uint8_t bite_intensity;
 } rod_data_t;
+
+typedef struct {
+    char data[256];
+    uint32_t checksum;
+} log_msg_t;
 
 #endif
