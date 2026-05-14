@@ -4,6 +4,7 @@
 #include "nvs.h"
 #include "nvs_handler.h"
 #include "esp_log.h"
+#include "cJSON.h"
 
 static const char *TAG = "NVS_MANAGER";
 
