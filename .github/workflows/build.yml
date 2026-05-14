@@ -1,0 +1,52 @@
+name: ESP-IDF CI Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-base:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+
+      - name: Build Base Station (ESP32-S3)
+        working-directory: vostok-nexus-v5-1
+        run: |
+          . $IDF_PATH/export.sh
+          idf.py set-target esp32s3
+          idf.py build
+
+      - name: Upload Base Binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: base-station-binary
+          path: vostok-nexus-v5-1/build/vostok-nexus-base.bin
+
+  build-rod:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+
+      - name: Build Rod Station (ESP32-C3)
+        working-directory: vostok-nexus-v5-1/rod_firmware
+        run: |
+          . $IDF_PATH/export.sh
+          idf.py set-target esp32c3
+          idf.py build
+
+      - name: Upload Rod Binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: rod-station-binary
+          path: vostok-nexus-v5-1/rod_firmware/build/vostok-nexus-rod.bin
