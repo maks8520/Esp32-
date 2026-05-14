@@ -4,8 +4,6 @@
     --bg-dark: #020617;
     --glass-bg: rgba(15, 23, 42, 0.4);
     --glass-border: rgba(255, 255, 255, 0.12);
-    --glow-lime: 0 0 20px rgba(212, 255, 143, 0.4);
-    --glow-cyan: 0 0 20px rgba(125, 211, 252, 0.4);
     --font-main: 'Space Grotesk', sans-serif;
     --font-data: 'JetBrains Mono', monospace;
 }
@@ -26,7 +24,7 @@ body {
     width: 100vw;
 }
 
-/* Background FX: Noise & Scanlines */
+/* Эффекты фона: Шум и Сканлинии */
 .noise-overlay {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -45,14 +43,7 @@ body {
     pointer-events: none;
 }
 
-.water-ripple {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: radial-gradient(circle at 50% 50%, rgba(125, 211, 252, 0.03) 0%, transparent 70%);
-    z-index: -1;
-}
-
-/* Glassmorphism 2.0 Core */
+/* Glassmorphism 2.0 */
 .glass-card {
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
@@ -60,41 +51,19 @@ body {
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
     box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.05);
-    margin-bottom: 20px;
-    position: relative;
-    overflow: hidden;
 }
 
-header {
-    height: 70px;
-    padding: env(safe-area-inset-top) 20px 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--glass-border);
-    backdrop-filter: blur(25px);
-    z-index: 1000;
-}
-
-.logo {
-    font-weight: 700;
-    letter-spacing: 3px;
-    font-size: 1.1rem;
-    text-transform: uppercase;
-}
-
-.logo span { color: var(--lime); text-shadow: var(--glow-lime); }
-
-/* AI Gauge */
+/* Dashboard Elements */
 .ai-gauge-container {
     position: relative;
-    width: 220px;
-    height: 220px;
-    margin: 20px auto;
+    width: 250px;
+    height: 250px;
+    margin: 30px auto;
 }
 
 .ultra-gauge {
     transform: rotate(-90deg);
+    width: 100%; height: 100%;
 }
 
 .gauge-bg { stroke: rgba(255,255,255,0.05); }
@@ -102,7 +71,6 @@ header {
     stroke: url(#gaugeGradient);
     stroke-linecap: round;
     transition: stroke-dashoffset 0.5s ease-out;
-    filter: drop-shadow(var(--glow-lime));
 }
 
 .gauge-center {
@@ -110,83 +78,55 @@ header {
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
-    width: 100%;
 }
 
 .predictor-value {
     font-size: 3.5rem;
     font-weight: 700;
     font-family: var(--font-data);
-    color: #fff;
-    text-shadow: 0 0 10px rgba(212, 255, 143, 0.3);
+    color: var(--lime);
+    text-shadow: 0 0 20px rgba(212, 255, 143, 0.5);
 }
 
-/* Rod Cards with Wobble & Bite */
+/* Rod Cards */
 .rod-cards {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 15px;
-    margin-bottom: 20px;
+    padding: 0 20px;
 }
 
 .rod-card {
     padding: 20px;
     text-align: center;
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .rod-card.bite {
+    animation: wobble 0.5s infinite;
     border-color: var(--lime);
-    box-shadow: var(--glow-lime);
+    box-shadow: 0 0 20px rgba(212, 255, 143, 0.3);
 }
 
-.rod-visual-container {
-    height: 80px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+@keyframes wobble {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-3deg); }
+    75% { transform: rotate(3deg); }
 }
 
-.rod-visual {
-    width: 4px; height: 100%;
-    background: rgba(255,255,255,0.08);
-    border-radius: 10px;
-    position: relative;
+/* Windy Map */
+#windyMap {
+    height: 350px;
+    width: 100%;
+    border-radius: 20px;
+    margin-top: 20px;
 }
 
-.rod-glow {
-    position: absolute;
-    bottom: 0; width: 100%;
-    height: 0%;
-    background: linear-gradient(to top, var(--cyan), #fff);
-    box-shadow: var(--glow-cyan);
-    border-radius: 10px;
-    transition: height 0.1s;
-}
-
-.bite .rod-glow {
-    background: linear-gradient(to top, var(--lime), #fff);
-    box-shadow: var(--glow-lime);
-}
-
-/* Map Loading Skeleton */
-.skeleton {
-    background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.05) 75%);
-    background-size: 200% 100%;
-    animation: skeleton-loading 1.5s infinite;
-}
-
-@keyframes skeleton-loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
-
-/* Nav Bar */
+/* Nav */
 .bottom-nav {
     position: fixed;
     bottom: 0; left: 0; width: 100%;
     height: 80px;
-    padding-bottom: env(safe-area-inset-bottom);
     background: rgba(2, 6, 23, 0.8);
     backdrop-filter: blur(25px);
     border-top: 1px solid var(--glass-border);
@@ -200,17 +140,9 @@ header {
     background: none; border: none;
     color: #475569;
     font-family: var(--font-main);
-    font-size: 0.65rem;
+    font-size: 0.7rem;
     font-weight: 700;
-    display: flex; flex-direction: column; align-items: center; gap: 4px;
-    transition: color 0.3s;
     cursor: pointer;
 }
 
 .nav-item.active { color: var(--cyan); }
-.nav-item .i { font-size: 1.5rem; }
-
-/* SR Only for A11y */
-.sr-only {
-    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;
-}

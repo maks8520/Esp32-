@@ -7,90 +7,122 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "nvs_flash.h"
+#include "nvs.h"
+#include "esp_now.h"
 #include "esp_http_server.h"
-#include "esp_heap_caps.h"
+#include "esp_vfs_fat.h"
+#include "sdmmc_cmd.h"
+#include "driver/i2c.h"
+#include "driver/uart.h"
+#include "driver/gpio.h"
 #include "cJSON.h"
 #include "config.h"
-#include "nvs_handler.h"
-#include "esp_now_logic.h"
 
-static const char *TAG = "VOSTOK_MAIN";
-httpd_handle_t server = NULL;
-int client_fd = -1;
-QueueHandle_t log_queue;
+static const char *TAG = "VOSTOK_BASE";
+static httpd_handle_t server = NULL;
+static int client_fd = -1;
+static QueueHandle_t log_queue;
 
-/* Vertical Profile Ring Buffer (PSRAM) */
-typedef struct {
-    float *data;
-    size_t size;
-    size_t head;
-} ring_buffer_t;
+/**
+ * @brief Инициализация NVS и сохранение ключа Windy если его нет.
+ */
+void init_nvs_manager() {
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(err);
 
-ring_buffer_t* profile_buffer;
-
-void init_profile_buffer(size_t points) {
-    profile_buffer = heap_caps_malloc(sizeof(ring_buffer_t), MALLOC_CAP_SPIRAM);
-    profile_buffer->data = heap_caps_malloc(points * sizeof(float), MALLOC_CAP_SPIRAM);
-    profile_buffer->size = points;
-    profile_buffer->head = 0;
-}
-
-/* Core 0 Tasks: High Priority Telemetry & Sensors */
-void telemetry_task(void *pvParameters) {
-    ESP_LOGI(TAG, "Starting Telemetry Task on Core 0");
-    espnow_init_base();
-
-    while(1) {
-        // High frequency sensor polling/processing here if needed
-        vTaskDelay(pdMS_TO_TICKS(10));
+    nvs_handle_t handle;
+    if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle) == ESP_OK) {
+        char key[64];
+        size_t size = sizeof(key);
+        if (nvs_get_str(handle, NVS_KEY_WINDY, key, &size) != ESP_OK) {
+            nvs_set_str(handle, NVS_KEY_WINDY, WINDY_API_KEY_DEF);
+            nvs_commit(handle);
+        }
+        nvs_close(handle);
     }
 }
 
-/* Core 1 Tasks: Networking & UI Data Prep */
+/**
+ * @brief Задача логирования на SD карту (Core 1).
+ * Работает в неблокирующем режиме через очередь.
+ */
+void sd_logging_task(void *pvParameters) {
+    log_msg_t msg;
+    while (1) {
+        if (xQueueReceive(log_queue, &msg, portMAX_DELAY)) {
+            FILE* f = fopen("/sdcard/fishing.jsonl", "a");
+            if (f) {
+                fprintf(f, "%s\n", msg.data);
+                fclose(f);
+            }
+        }
+    }
+}
+
+/**
+ * @brief Обработчик входящих данных ESP-NOW (Core 0).
+ */
+static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) {
+    if (len == sizeof(rod_data_t)) {
+        rod_data_t rod;
+        memcpy(&rod, data, len);
+
+        cJSON *root = cJSON_CreateObject();
+        cJSON_AddStringToObject(root, "type", "rod_data");
+        cJSON_AddNumberToObject(root, "id", rod.rod_id);
+        cJSON_AddNumberToObject(root, "bite", rod.bite_intensity);
+
+        char *json_str = cJSON_PrintUnformatted(root);
+
+        // Отправка в очередь логирования
+        log_msg_t log_msg;
+        strncpy(log_msg.data, json_str, sizeof(log_msg.data) - 1);
+        xQueueSend(log_queue, &log_msg, 0);
+
+        // Отправка в WebSocket
+        if (client_fd != -1) {
+            httpd_ws_frame_t ws_pkt = { .payload = (uint8_t*)json_str, .len = strlen(json_str), .type = HTTPD_WS_TYPE_TEXT };
+            httpd_ws_send_frame_async(server, client_fd, &ws_pkt);
+        }
+
+        cJSON_Delete(root);
+        free(json_str);
+    }
+}
+
+/**
+ * @brief WebSocket обработчик (Core 1).
+ */
 static esp_err_t ws_handler(httpd_req_t *req) {
     if (req->method == HTTP_GET) {
         client_fd = httpd_req_to_sockfd(req);
-        ESP_LOGI(TAG, "WebSocket connected: %d", client_fd);
         return ESP_OK;
     }
+    // Здесь можно добавить санитарную проверку входящих пакетов
     return ESP_OK;
 }
 
-static const httpd_uri_t ws_uri = {
-    .uri = "/ws", .method = HTTP_GET, .handler = ws_handler, .is_websocket = true
-};
+static const httpd_uri_t ws = { .uri = "/ws", .method = HTTP_GET, .handler = ws_handler, .is_websocket = true };
 
-void network_task(void *pvParameters) {
-    ESP_LOGI(TAG, "Starting Network Task on Core 1");
-
+void start_web_server() {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.core_id = 1;
     if (httpd_start(&server, &config) == ESP_OK) {
-        httpd_register_uri_handler(server, &ws_uri);
-    }
-
-    while(1) {
-        if (client_fd != -1) {
-            cJSON *root = cJSON_CreateObject();
-            cJSON_AddStringToObject(root, "type", "base_data");
-            cJSON_AddNumberToObject(root, "temp", 24.5 + (rand()%10)/10.0);
-
-            char *json_str = cJSON_PrintUnformatted(root);
-            httpd_ws_frame_t ws_pkt = { .payload = (uint8_t*)json_str, .len = strlen(json_str), .type = HTTPD_WS_TYPE_TEXT };
-            httpd_ws_send_frame_async(server, client_fd, &ws_pkt);
-            free(json_str);
-            cJSON_Delete(root);
-        }
-        vTaskDelay(pdMS_TO_TICKS(2000));
+        httpd_register_uri_handler(server, &ws);
     }
 }
 
 void app_main(void) {
-    ESP_LOGI(TAG, "Vostok Nexus v5.1 ULTRA PREMIUM Initializing...");
+    // 1. Инициализация хранилища
+    init_nvs_manager();
+    log_queue = xQueueCreate(LOG_QUEUE_SIZE, sizeof(log_msg_t));
 
-    nvs_init_storage();
-    init_profile_buffer(100); // 100 points for meteo profile
-
+    // 2. WiFi и ESP-NOW (Core 0 для прерываний и телеметрии)
     esp_netif_init();
     esp_event_loop_create_default();
     esp_netif_create_default_wifi_ap();
@@ -99,9 +131,12 @@ void app_main(void) {
     esp_wifi_set_mode(WIFI_MODE_AP);
     esp_wifi_start();
 
-    log_queue = xQueueCreate(10, sizeof(log_msg_t));
+    esp_now_init();
+    esp_now_register_recv_cb(espnow_recv_cb);
 
-    // Dual Core Task Pinning (Based on Context7 v5.x guidelines)
-    xTaskCreatePinnedToCore(telemetry_task, "telemetry_task", 4096, NULL, 10, NULL, 0);
-    xTaskCreatePinnedToCore(network_task, "network_task", 4096, NULL, 5, NULL, 1);
+    // 3. Запуск сервисов на разных ядрах
+    xTaskCreatePinnedToCore(start_web_server, "web_server", 4096, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(sd_logging_task, "sd_log", 4096, NULL, 4, NULL, 1);
+
+    ESP_LOGI(TAG, "Система VOSTOK NEXUS v5.1 запущена на двух ядрах.");
 }

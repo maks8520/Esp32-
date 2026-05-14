@@ -12,7 +12,7 @@ jobs:
     container: espressif/idf:v5.1
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: 'recursive'
 
@@ -23,18 +23,21 @@ jobs:
           idf.py set-target esp32s3
           idf.py build
 
-      - name: Upload Base Binary
-        uses: actions/upload-artifact@v3
+      - name: Upload Base Artifacts
+        uses: actions/upload-artifact@v4
         with:
-          name: base-station-binary
-          path: vostok-nexus-v5-1/build/vostok-nexus-base.bin
+          name: base-station-firmware
+          path: |
+            vostok-nexus-v5-1/build/bootloader/bootloader.bin
+            vostok-nexus-v5-1/build/partition_table/partition-table.bin
+            vostok-nexus-v5-1/build/vostok-nexus-base.bin
 
   build-rod:
     runs-on: ubuntu-latest
     container: espressif/idf:v5.1
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: 'recursive'
 
@@ -45,8 +48,11 @@ jobs:
           idf.py set-target esp32c3
           idf.py build
 
-      - name: Upload Rod Binary
-        uses: actions/upload-artifact@v3
+      - name: Upload Rod Artifacts
+        uses: actions/upload-artifact@v4
         with:
-          name: rod-station-binary
-          path: vostok-nexus-v5-1/rod_firmware/build/vostok-nexus-rod.bin
+          name: rod-station-firmware
+          path: |
+            vostok-nexus-v5-1/rod_firmware/build/bootloader/bootloader.bin
+            vostok-nexus-v5-1/rod_firmware/build/partition_table/partition-table.bin
+            vostok-nexus-v5-1/rod_firmware/build/vostok-nexus-rod.bin
