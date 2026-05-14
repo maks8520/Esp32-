@@ -25,7 +25,23 @@ static int client_fd = -1;
 static QueueHandle_t log_queue;
 
 /**
- * @brief Инициализация NVS и сохранение ключа Windy если его нет.
+ * @brief Инициализация I2C мастера для S3 (SDA: 4, SCL: 5).
+ */
+static void i2c_master_init() {
+    i2c_config_t conf = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = PIN_I2C_SDA,
+        .scl_io_num = PIN_I2C_SCL,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = 400000,
+    };
+    i2c_param_config(I2C_NUM_0, &conf);
+    i2c_driver_install(I2C_NUM_0, conf.mode, 0, 0, 0);
+}
+
+/**
+ * @brief Инициализация NVS и сохранение ключа Windy.
  */
 void init_nvs_manager() {
     esp_err_t err = nvs_flash_init();
@@ -49,7 +65,6 @@ void init_nvs_manager() {
 
 /**
  * @brief Задача логирования на SD карту (Core 1).
- * Работает в неблокирующем режиме через очередь.
  */
 void sd_logging_task(void *pvParameters) {
     log_msg_t msg;
@@ -79,12 +94,10 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
 
         char *json_str = cJSON_PrintUnformatted(root);
 
-        // Отправка в очередь логирования
         log_msg_t log_msg;
         strncpy(log_msg.data, json_str, sizeof(log_msg.data) - 1);
         xQueueSend(log_queue, &log_msg, 0);
 
-        // Отправка в WebSocket
         if (client_fd != -1) {
             httpd_ws_frame_t ws_pkt = { .payload = (uint8_t*)json_str, .len = strlen(json_str), .type = HTTPD_WS_TYPE_TEXT };
             httpd_ws_send_frame_async(server, client_fd, &ws_pkt);
@@ -95,15 +108,11 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
     }
 }
 
-/**
- * @brief WebSocket обработчик (Core 1).
- */
 static esp_err_t ws_handler(httpd_req_t *req) {
     if (req->method == HTTP_GET) {
         client_fd = httpd_req_to_sockfd(req);
         return ESP_OK;
     }
-    // Здесь можно добавить санитарную проверку входящих пакетов
     return ESP_OK;
 }
 
@@ -118,11 +127,12 @@ void start_web_server() {
 }
 
 void app_main(void) {
-    // 1. Инициализация хранилища
+    /* 1. Инициализация хранилища и периферии */
     init_nvs_manager();
+    i2c_master_init();
     log_queue = xQueueCreate(LOG_QUEUE_SIZE, sizeof(log_msg_t));
 
-    // 2. WiFi и ESP-NOW (Core 0 для прерываний и телеметрии)
+    /* 2. WiFi и ESP-NOW (Core 0) */
     esp_netif_init();
     esp_event_loop_create_default();
     esp_netif_create_default_wifi_ap();
@@ -134,9 +144,9 @@ void app_main(void) {
     esp_now_init();
     esp_now_register_recv_cb(espnow_recv_cb);
 
-    // 3. Запуск сервисов на разных ядрах
+    /* 3. Запуск задач на разных ядрах */
     xTaskCreatePinnedToCore(start_web_server, "web_server", 4096, NULL, 5, NULL, 1);
     xTaskCreatePinnedToCore(sd_logging_task, "sd_log", 4096, NULL, 4, NULL, 1);
 
-    ESP_LOGI(TAG, "Система VOSTOK NEXUS v5.1 запущена на двух ядрах.");
+    ESP_LOGI(TAG, "Система VOSTOK NEXUS v5.1 S3 инициализирована (I2C: 4,5).");
 }
