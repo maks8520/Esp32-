@@ -89,7 +89,7 @@ void sd_log_async_task(void *pvParameters) {
 
 void app_main(void) {
     /* Инициализация NVS и Периферии */
-    init_nvs_manager();
+    nvs_init_storage();
     peripherals_init();
     log_queue = xQueueCreate(LOG_QUEUE_SIZE, sizeof(log_msg_t));
 
