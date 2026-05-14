@@ -1,22 +1,29 @@
 # VOSTOK NEXUS v5.1 ULTRA PREMIUM
 
-Профессиональная система телеметрии для рыбалки на базе ESP32-S3 и ESP32-C3.
+High-performance fishing telemetry system powered by ESP32-S3 and ESP32-C3.
 
-## Архитектура
-- **Base (ESP32-S3):** Центральный хаб. Обработка ESP-NOW, WiFi AP, WebSocket сервер, логирование на SD карту.
-- **Rod (ESP32-C3):** Модуль на удочке. Сбор данных акселерометра и датчика Холла, передача через ESP-NOW.
+## Features
+- **Real-time Telemetry:** ESP-NOW protocol for sub-100ms latency.
+- **AI Bite Predictor:** Advanced logic for detecting fish activity.
+- **Glassmorphism UI:** Premium PWA with interactive maps and charts.
+- **Environmental Monitoring:** BME280, DS18B20, and Open-Meteo integration.
+- **Asynchronous Logging:** JSONL format on MicroSD card.
 
-## Инструкция по прошивке
-Для прошивки используйте [ESP Web Flasher](https://espressif.github.io/esptool-js/):
+## Project Structure
+- `main/`: Base Station firmware (ESP32-S3).
+- `rod_firmware/`: Rod Station firmware (ESP32-C3).
+- `web/`: Premium PWA frontend.
 
-1. Подключите ESP32 к USB.
-2. Выберите нужные `.bin` файлы из раздела **Actions** этого репозитория:
-   - `bootloader.bin` (адрес: 0x0000)
-   - `partition-table.bin` (адрес: 0x8000)
-   - `vostok-nexus-base.bin` или `vostok-nexus-rod.bin` (адрес: 0x10000)
-3. Нажмите **Program**, чтобы начать процесс.
+## Installation
+1. Clone the repository.
+2. Build and flash the Base Station:
+   ```bash
+   idf.py build flash monitor
+   ```
+3. Build and flash the Rod Station:
+   ```bash
+   cd rod_firmware && idf.py build flash monitor
+   ```
 
-## Стек технологий
-- **Firmware:** ESP-IDF v5.1 (Dual-Core, NVS, FreeRTOS).
-- **Web UI:** PWA (HTML5, Glassmorphism 2.0, Chart.js, Leaflet).
-- **CI/CD:** GitHub Actions (автоматическая сборка артефактов).
+## License
+MIT - Premium Edition.

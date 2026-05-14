@@ -1,14 +1,13 @@
 {
   "name": "VOSTOK NEXUS v5.1",
   "short_name": "VOSTOK",
-  "start_url": ".",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#020617",
-  "theme_color": "#7dd3fc",
-  "description": "Premium Fishing Telemetry System",
+  "theme_color": "#020617",
   "icons": [
     {
-      "src": "https://img.icons8.com/neon/512/anchor.png",
+      "src": "https://img.icons8.com/ios-filled/512/d4ff8f/fishing-pole.png",
       "sizes": "512x512",
       "type": "image/png"
     }

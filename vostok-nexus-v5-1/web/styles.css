@@ -11,153 +11,140 @@
 }
 
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+    margin: 0; padding: 0; box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
+    user-select: none;
 }
 
 body {
     background: var(--bg-dark);
-    color: #f8fafc;
+    color: #f1f5f9;
     font-family: var(--font-main);
     overflow: hidden;
     height: 100vh;
     width: 100vw;
 }
 
-/* Эффекты фона: Шум и Сканлинии */
+/* Effects */
 .noise-overlay {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: url('https://grainy-gradients.vercel.app/noise.svg');
-    opacity: 0.04;
-    pointer-events: none;
-    z-index: 100;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
+    opacity: 0.03; pointer-events: none; z-index: 1000;
 }
 
 .scanlines {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: linear-gradient(to bottom, rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
-    background-size: 100% 4px;
-    z-index: 101;
-    pointer-events: none;
-}
-
-/* Glassmorphism 2.0 Core */
-.glass-card {
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    border-radius: 24px;
-    backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
-    box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.05);
-    margin-bottom: 20px;
+    background-size: 100% 4px; pointer-events: none; z-index: 1001;
 }
 
 header {
     height: 70px;
     padding: env(safe-area-inset-top) 20px 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--glass-border);
-    backdrop-filter: blur(25px);
-    z-index: 1000;
+    display: flex; justify-content: space-between; align-items: center;
+    backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border);
 }
 
-.logo {
-    font-weight: 700;
-    letter-spacing: 3px;
-    font-size: 1.1rem;
-    text-transform: uppercase;
-}
-
+.logo { font-weight: 700; letter-spacing: 2px; }
 .logo span { color: var(--lime); text-shadow: var(--glow-lime); }
 
-/* Анимированный AI Gauge */
+.status-dot { width: 10px; height: 10px; border-radius: 50%; display: block; }
+.status-dot.connected { background: var(--lime); box-shadow: var(--glow-lime); }
+.status-dot.disconnected { background: #ef4444; }
+
+/* Dashboard */
 .ai-gauge-container {
-    position: relative;
-    width: 250px;
-    height: 250px;
-    margin: 30px auto;
+    position: relative; width: 220px; height: 220px;
+    margin: 20px auto;
 }
 
-.ultra-gauge {
-    transform: rotate(-90deg);
-}
-
+.ultra-gauge { transform: rotate(-90deg); }
 .gauge-bg { stroke: rgba(255,255,255,0.05); }
 .gauge-fill {
-    stroke: url(#gaugeGradient);
-    stroke-linecap: round;
-    transition: stroke-dashoffset 0.5s ease-out;
-    filter: drop-shadow(var(--glow-lime));
+    stroke: url(#gaugeGradient); stroke-linecap: round;
+    transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: drop-shadow(var(--glow-cyan));
 }
 
 .gauge-center {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
     text-align: center;
 }
+.predictor-label { font-size: 0.6rem; color: var(--cyan); letter-spacing: 1px; }
+.predictor-value { font-size: 3rem; font-weight: 700; font-family: var(--font-data); }
 
-.predictor-value {
-    font-size: 3.5rem;
-    font-weight: 700;
-    font-family: var(--font-data);
-    color: #fff;
-    text-shadow: 0 0 10px rgba(212, 255, 143, 0.3);
+.glass-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    backdrop-filter: blur(25px);
+    margin: 0 15px 15px;
+    padding: 15px;
 }
 
-/* Род-карточки */
-.rod-cards {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    padding: 0 20px;
-}
-
-.rod-card {
-    padding: 20px;
-    text-align: center;
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
+.rod-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 15px; }
+.rod-card { margin: 0; text-align: center; }
+.rod-header { font-size: 0.8rem; font-weight: 700; margin-bottom: 10px; color: var(--cyan); }
+.rod-data-row { font-family: var(--font-data); font-size: 0.7rem; margin-bottom: 5px; }
+.rod-status { font-size: 1rem; font-weight: 700; transition: color 0.3s; }
 
 .rod-card.bite {
-    animation: strike-wobble 0.6s infinite;
+    animation: wobble 0.5s infinite;
     border-color: var(--lime);
     box-shadow: var(--glow-lime);
 }
+.rod-card.bite .rod-status { color: var(--lime); }
 
-@keyframes strike-wobble {
-    0%, 100% { transform: rotate(0deg) scale(1); }
-    25% { transform: rotate(-3deg) scale(1.05); }
-    75% { transform: rotate(3deg) scale(1.05); }
+@keyframes wobble {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-2deg) scale(1.02); }
+    75% { transform: rotate(2deg) scale(1.02); }
 }
 
-/* Навигация */
+.quick-meteo { display: flex; justify-content: space-around; align-items: center; }
+.meteo-item { text-align: center; }
+.m-val { display: block; font-size: 1.2rem; font-weight: 700; font-family: var(--font-data); }
+.m-lbl { font-size: 0.6rem; color: #64748b; }
+.meteo-divider { width: 1px; height: 30px; background: var(--glass-border); }
+
+/* Navigation */
 .bottom-nav {
-    position: fixed;
-    bottom: 0; left: 0; width: 100%;
-    height: 80px;
+    position: fixed; bottom: 0; left: 0; width: 100%; height: 75px;
     padding-bottom: env(safe-area-inset-bottom);
     background: rgba(2, 6, 23, 0.8);
-    backdrop-filter: blur(25px);
-    border-top: 1px solid var(--glass-border);
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    z-index: 1000;
+    backdrop-filter: blur(20px); border-top: 1px solid var(--glass-border);
+    display: flex; justify-content: space-around; align-items: center;
 }
 
 .nav-item {
-    background: none; border: none;
-    color: #475569;
-    font-family: var(--font-main);
-    font-size: 0.7rem;
-    font-weight: 700;
+    background: none; border: none; color: #475569;
+    font-family: var(--font-main); font-weight: 700; font-size: 0.6rem;
+    transition: 0.3s;
+}
+.nav-item.active { color: var(--cyan); text-shadow: var(--glow-cyan); }
+
+/* Pages */
+.page { display: none; height: calc(100vh - 145px); overflow-y: auto; padding-top: 20px; }
+.page.active { display: block; animation: fadeIn 0.4s ease-out; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+#windyMap { height: 300px; border-radius: 15px; }
+.data-table { width: 100%; border-collapse: collapse; font-family: var(--font-data); font-size: 0.7rem; }
+.data-table th { text-align: left; color: var(--cyan); padding: 5px; }
+.data-table td { padding: 5px; border-top: 1px solid rgba(255,255,255,0.05); }
+
+.ai-fish-id-btn {
+    width: calc(100% - 30px); margin: 0 15px; height: 60px;
+    background: var(--lime); color: var(--bg-dark);
+    border: none; border-radius: 15px; font-weight: 700;
+    position: relative; overflow: hidden;
 }
 
-.nav-item.active { color: var(--cyan); }
+.scanner-line {
+    position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+    background: white; box-shadow: 0 0 15px white;
+    animation: scan 2s linear infinite;
+}
+
+@keyframes scan { from { top: 0; } to { top: 100%; } }
