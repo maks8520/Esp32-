@@ -27,7 +27,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: base-station-firmware
-          path: vostok-nexus-v5-1/build/*.bin
+          path: |
+            vostok-nexus-v5-1/build/*.bin
+            vostok-nexus-v5-1/build/bootloader/bootloader.bin
+            vostok-nexus-v5-1/build/partition_table/partition-table.bin
 
   build-rod:
     runs-on: ubuntu-latest
@@ -49,4 +52,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rod-station-firmware
-          path: vostok-nexus-v5-1/rod_firmware/build/*.bin
+          path: |
+            vostok-nexus-v5-1/rod_firmware/build/*.bin
+            vostok-nexus-v5-1/rod_firmware/build/bootloader/bootloader.bin
+            vostok-nexus-v5-1/rod_firmware/build/partition_table/partition-table.bin

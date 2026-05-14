@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Инициализация состояния ---
+    /* Инициализация состояния */
     let ws;
     let windyMap;
     let gaugeValue = 0;
@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDot: document.querySelector('.status-dot')
     };
 
-    // --- WebSocket и Телеметрия ---
+    /* WebSocket и Обработка событий */
     function connect() {
         const host = window.location.host || '192.168.4.1';
         ws = new WebSocket(`ws://${host}/ws`);
@@ -20,10 +20,14 @@ document.addEventListener('DOMContentLoaded', () => {
         ws.onclose = () => { elements.statusDot.className = 'status-dot disconnected'; setTimeout(connect, 3000); };
 
         ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === 'rod_data') {
-                updateRodUI(data);
-            }
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'rod_data') {
+                    updateRodUI(data);
+                } else if (data.type === 'gps_data') {
+                    updateGPS(data);
+                }
+            } catch(e) { console.error("Ошибка парсинга", e); }
         };
     }
 
@@ -32,24 +36,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const status = document.getElementById(`rod-${data.id}-status`);
 
         if (data.bite > 50) {
-            card.classList.add('bite');
-            status.innerText = "BITE!";
-            vibrateBite(data.id);
+            if (!card.classList.contains('bite')) {
+                card.classList.add('bite');
+                status.innerText = "BITE!";
+                vibrateBite(data.id);
+            }
         } else {
             card.classList.remove('bite');
             status.innerText = "READY";
         }
     }
 
-    // --- Вибрация (Haptics) ---
+    function updateGPS(data) {
+        if (windyMap && data.lat && data.lon) {
+            windyMap.setView([data.lat, data.lon], 13);
+            console.log("GPS Fix: Map Centered");
+        }
+    }
+
+    /* Вибрация (Haptics) */
     function vibrateBite(rodId) {
         if ("vibrate" in navigator) {
-            const pattern = rodId === 1 ? [100, 50, 100] : [200, 100, 200];
+            // Разные паттерны для разных удочек
+            const pattern = rodId === 1 ? [100, 50, 100, 50, 200] : [200, 100, 200, 100, 300];
             navigator.vibrate(pattern);
         }
     }
 
-    // --- Анимация Gauge ---
+    /* Анимация Gauge */
     function updateGauge(val) {
         gaugeValue = val;
         const offset = 534 - (val / 100) * 534;
@@ -57,13 +71,13 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.predictorVal.innerText = `${Math.round(val)}%`;
     }
 
-    // --- Карта Windy ---
+    /* Карта Windy (Leaflet Base) */
     function initMap() {
         windyMap = L.map('windyMap', { zoomControl: false }).setView([45.03, 38.97], 10);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(windyMap);
     }
 
-    // --- Вертикальный профиль (Chart.js) ---
+    /* Вертикальный профиль (Chart.js) */
     function initProfileChart() {
         const ctx = document.getElementById('meteoProfileChart').getContext('2d');
         new Chart(ctx, {
@@ -90,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Навигация ---
+    /* Навигация */
     elements.navItems.forEach(item => {
         item.addEventListener('click', () => {
             const pageId = item.getAttribute('data-page');
@@ -98,16 +112,17 @@ document.addEventListener('DOMContentLoaded', () => {
             item.classList.add('active');
             elements.pages.forEach(p => p.classList.remove('active'));
             document.getElementById(pageId).classList.add('active');
+            if (pageId === 'meteo' && windyMap) {
+                setTimeout(() => windyMap.invalidateSize(), 200);
+            }
         });
     });
 
-    // Инициализация
     initMap();
     initProfileChart();
     connect();
 
-    // Симуляция для теста
     setInterval(() => {
-        updateGauge(60 + Math.random() * 20);
-    }, 2000);
+        updateGauge(65 + Math.random() * 25);
+    }, 3000);
 });

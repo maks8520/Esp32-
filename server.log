@@ -1,0 +1,11 @@
+127.0.0.1 - - [14/May/2026 15:53:27] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 15:53:27] "GET /script.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 15:53:27] "GET /styles.css HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 15:53:27] code 404, message File not found
+127.0.0.1 - - [14/May/2026 15:53:27] "GET /ws HTTP/1.1" 404 -
+127.0.0.1 - - [14/May/2026 15:53:30] code 404, message File not found
+127.0.0.1 - - [14/May/2026 15:53:30] "GET /ws HTTP/1.1" 404 -
+127.0.0.1 - - [14/May/2026 15:53:33] code 404, message File not found
+127.0.0.1 - - [14/May/2026 15:53:33] "GET /ws HTTP/1.1" 404 -
+127.0.0.1 - - [14/May/2026 15:53:36] code 404, message File not found
+127.0.0.1 - - [14/May/2026 15:53:36] "GET /ws HTTP/1.1" 404 -
