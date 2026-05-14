@@ -3,21 +3,20 @@
 
 #include <stdint.h>
 
-/* WiFi и Сеть */
+/* Настройки WiFi и сети */
 #define WIFI_SSID           "VOSTOK_NEXUS_V5"
 #define WIFI_PASS           "ultra_premium"
 #define WS_SERVER_PORT      80
 
-/* Конфигурация ESP-NOW */
+/* Настройки ESP-NOW */
 #define ESPNOW_CHANNEL      1
 #define ROD_COUNT           2
 
-/* NVS Пространства имен и ключи */
+/* Пространства имен и ключи NVS */
 #define NVS_NAMESPACE       "vostok"
 #define NVS_KEY_WINDY       "windy_key"
-#define WINDY_API_KEY_DEF   "WBCzKeL9AXVHOrcZ4ViyvqpdID2r25LL"
 
-/* Пины - Base (ESP32-S3) */
+/* Распиновка - Базовая станция (ESP32-S3) */
 #define PIN_I2C_SDA         4
 #define PIN_I2C_SCL         5
 #define PIN_GPS_TX          1
@@ -30,9 +29,10 @@
 #define PIN_WS2812          48
 #define PIN_BUZZER          45
 
-/* Настройки задач */
-#define TASK_STACK_SIZE     4096
-#define LOG_QUEUE_SIZE      50
+/* Конфигурация задач */
+#define TASK_STACK_SIZE_CORE0  8192
+#define TASK_STACK_SIZE_CORE1  8192
+#define LOG_QUEUE_SIZE         100
 
 /* Структуры данных */
 typedef struct {
@@ -46,6 +46,7 @@ typedef struct {
 
 typedef struct {
     char data[256];
+    uint32_t checksum;
 } log_msg_t;
 
 #endif
