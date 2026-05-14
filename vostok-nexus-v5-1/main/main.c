@@ -16,7 +16,7 @@
 #include "config.h"
 #include "nvs_handler.h"
 #include "esp_now_logic.h"
-#include "nvs_handler.h
+
 
 static const char *TAG = "VOSTOK_MAIN";
 httpd_handle_t server = NULL;
