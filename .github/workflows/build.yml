@@ -11,12 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     container: espressif/idf:v5.1
 
-    defaults:
-  run:
-    shell: bash # Это заставит все шаги использовать Bash
-    
-    steps:
-      - name: Checkout code
+defaults:
+      run:
+        shell: bash
+steps: # Линия 18: должна быть на том же уровне, что и defaults
+      - name: Checkout code # Линия 19: Должна иметь отступ в 2 пробела
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
