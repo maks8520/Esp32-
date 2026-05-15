@@ -10,13 +10,12 @@ jobs:
   build-base:
     runs-on: ubuntu-latest
     container: espressif/idf:v5.1
-
-defaults:
+    # Эти настройки теперь привязаны к конкретному заданию
+    defaults:
       run:
         shell: bash
-
-    steps: # Линия 18: должна быть на том же уровне, что и defaults
-      - name: Checkout code # Линия 19: Должна иметь отступ в 2 пробела
+    steps:
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
@@ -31,7 +30,7 @@ defaults:
           key: ${{ runner.os }}-esp-idf-base-${{ hashFiles('vostok-nexus-v5-1/main/idf_component.yml') }}
       
       - name: Clean build artifacts
-       run: |
+        run: |
           rm -rf vostok-nexus-v5-1/build
           rm -f vostok-nexus-v5-1/dependencies.lock
           rm -rf vostok-nexus-v5-1/managed_components
@@ -55,6 +54,10 @@ defaults:
   build-rod:
     runs-on: ubuntu-latest
     container: espressif/idf:v5.1
+    # Добавили и сюда, чтобы удочки тоже собирались без ошибок
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
