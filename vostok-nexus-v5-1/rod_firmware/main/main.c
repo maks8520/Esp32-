@@ -18,6 +18,7 @@ uint8_t base_mac[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 #define PIN_I2C_SDA     8
 #define PIN_I2C_SCL     9
 #define PIN_HALL_SENSOR 3
+#define PIN_WS2812      7
 
 typedef struct {
     uint8_t rod_id;
@@ -49,7 +50,7 @@ void app_main(void) {
         .scl_io_num = PIN_I2C_SCL,
         .sda_pullup_en = GPIO_PULLUP_ENABLE,
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = 100000,
+        .master.clk_speed = 400000,
     };
     i2c_param_config(I2C_NUM_0, &conf);
     i2c_driver_install(I2C_NUM_0, conf.mode, 0, 0, 0);
@@ -72,10 +73,10 @@ void app_main(void) {
 
     while(1) {
         my_data.hall_val = gpio_get_level(PIN_HALL_SENSOR);
-        my_data.accel_z = 9.8 + (rand() % 30) / 10.0;
-        my_data.bite_intensity = (my_data.accel_z > 11.5) ? (rand() % 50 + 50) : 0;
+        my_data.accel_z = 9.8f + (rand() % 30) / 10.0f;
+        my_data.bite_intensity = (my_data.accel_z > 11.5f) ? (rand() % 50 + 50) : 0;
 
         esp_now_send(base_mac, (uint8_t *) &my_data, sizeof(my_data));
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(25)); // 40Hz sampling
     }
 }

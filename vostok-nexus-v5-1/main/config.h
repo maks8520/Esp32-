@@ -17,7 +17,7 @@
 #define NVS_KEY_WINDY       "windy_key"
 
 /* --- Пин-код (ESP32-S3 DevKit) --- */
-/* I2C (BME280, OLED если есть) */
+/* Base (S3): No RGB, No Buttons per Mission */
 #define PIN_I2C_SDA         4
 #define PIN_I2C_SCL         5
 
@@ -33,12 +33,6 @@
 
 /* OneWire (DS18B20) */
 #define PIN_DS18B20         14
-
-/* UI Elements */
-#define PIN_WS2812          48
-#define PIN_BUZZER          45
-#define PIN_BTN_1           0
-#define PIN_BTN_2           21
 
 /* --- Задачи и Очереди --- */
 #define TASK_STACK_SIZE     8192

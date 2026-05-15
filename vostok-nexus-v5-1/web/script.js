@@ -2,76 +2,66 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = {
         ws: null,
         currentPage: 'dashboard',
-        rodData: { 1: { bite: 0, accel: 9.8 }, 2: { bite: 0, accel: 9.8 } },
-        meteo: { temp: 24.5, wind: 3.2 },
-        predictor: 0
+        predictor: 0,
+        lastUpdate: 0
     };
 
-    const elements = {
-        navItems: document.querySelectorAll('.nav-item'),
-        pages: document.querySelectorAll('.page'),
-        predictorGauge: document.getElementById('predictorGauge'),
-        predictorVal: document.getElementById('predictorVal'),
-        statusDot: document.querySelector('.status-dot')
-    };
+    // Navigation
+    const navItems = document.querySelectorAll('.nav-item');
+    const pages = document.querySelectorAll('.page');
 
-    // Navigation logic
-    elements.navItems.forEach(item => {
+    navItems.forEach(item => {
         item.addEventListener('click', () => {
             const pageId = item.dataset.page;
-            showPage(pageId);
+            navItems.forEach(n => n.classList.remove('active'));
+            item.classList.add('active');
+            pages.forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+
+            if (pageId === 'meteo') initMap();
+            if (pageId === 'profile') initProfile();
         });
     });
 
-    function showPage(pageId) {
-        state.currentPage = pageId;
-        elements.pages.forEach(p => p.classList.remove('active'));
-        elements.navItems.forEach(n => n.classList.remove('active'));
-
-        document.getElementById(pageId).classList.add('active');
-        document.querySelector(`.nav-item[data-page="${pageId}"]`).classList.add('active');
-
-        if (pageId === 'meteo') initMap();
-        if (pageId === 'profile') initProfile();
-    }
-
-    // WebSocket implementation
+    // WebSocket with Throttling (Phase 2)
     function connectWS() {
         const host = window.location.host || '192.168.4.1';
         state.ws = new WebSocket(`ws://${host}/ws`);
 
         state.ws.onopen = () => {
-            elements.statusDot.classList.add('connected');
-            elements.statusDot.classList.remove('disconnected');
-            if(document.getElementById('ws-status')) document.getElementById('ws-status').innerText = 'CONNECTED';
+            document.querySelector('.status-dot').className = 'status-dot connected';
+            document.getElementById('ws-status').innerText = 'ПОДКЛЮЧЕНО';
+            document.getElementById('ws-status').style.color = '#d4ff8f';
         };
 
         state.ws.onclose = () => {
-            elements.statusDot.classList.add('disconnected');
-            elements.statusDot.classList.remove('connected');
-            if(document.getElementById('ws-status')) document.getElementById('ws-status').innerText = 'RECONNECTING...';
+            document.querySelector('.status-dot').className = 'status-dot disconnected';
+            document.getElementById('ws-status').innerText = 'ПЕРЕПОДКЛЮЧЕНИЕ...';
+            document.getElementById('ws-status').style.color = '#ef4444';
             setTimeout(connectWS, 3000);
         };
 
         state.ws.onmessage = (e) => {
-            try {
-                const data = JSON.parse(e.data);
-                handleUpdate(data);
-            } catch (err) {
-                console.error("WS Parse Error:", err);
-            }
+            const now = Date.now();
+            if (now - state.lastUpdate < 20) return; // 50Hz cap for safety
+            state.lastUpdate = now;
+
+            requestAnimationFrame(() => {
+                try {
+                    const data = JSON.parse(e.data);
+                    handleMessage(data);
+                } catch (err) {}
+            });
         };
     }
 
-    function handleUpdate(data) {
+    function handleMessage(data) {
         if (data.type === 'rod_data') {
-            updateRodUI(data);
-        } else if (data.type === 'meteo') {
-            updateMeteoUI(data);
+            updateRod(data);
         }
     }
 
-    function updateRodUI(data) {
+    function updateRod(data) {
         const { id, bite, accel } = data;
         const card = document.getElementById(`rod-${id}`);
         const accelEl = document.getElementById(`rod-${id}-accel`);
@@ -81,74 +71,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (bite > 60) {
             card.classList.add('bite');
-            statusEl.innerText = 'BITE DETECTED!';
+            statusEl.innerText = 'ПОКЛЕВКА!';
             statusEl.style.color = '#d4ff8f';
-            if (window.navigator.vibrate) window.navigator.vibrate([200, 100, 200]);
+            // Phase 3: Haptic Strike
+            if (window.navigator.vibrate) window.navigator.vibrate([150, 50, 150]);
         } else {
             card.classList.remove('bite');
-            statusEl.innerText = 'MONITORING';
+            statusEl.innerText = 'ОЖИДАНИЕ';
             statusEl.style.color = 'inherit';
         }
 
-        // AI Predictor logic simulation if not sent from ESP
         updatePredictor(bite);
     }
 
     function updatePredictor(val) {
         state.predictor = Math.min(100, Math.max(0, val));
-        elements.predictorVal.innerText = `${state.predictor}%`;
-        // SVG Gauge animation: circumference is 534 (2 * PI * 85)
+        document.getElementById('predictorVal').innerText = `${state.predictor}%`;
         const offset = 534 - (state.predictor / 100 * 534);
-        elements.predictorGauge.style.strokeDashoffset = offset;
+        document.getElementById('predictorGauge').style.strokeDashoffset = offset;
     }
 
-    function updateMeteoUI(data) {
-        if (data.temp) document.getElementById('m-temp').innerText = `${data.temp}°C`;
-        if (data.wind) document.getElementById('m-wind').innerText = `${data.wind}m/s`;
+    // ECharts Vertical Profile (Phase 3)
+    let profileChart = null;
+    function initProfile() {
+        if (profileChart) return;
+        const chartDom = document.getElementById('profileChart');
+        profileChart = echarts.init(chartDom, 'dark');
+        const option = {
+            backgroundColor: 'transparent',
+            title: { text: 'Вертикальный Профиль', textStyle: { color: '#d4ff8f', fontSize: 14 } },
+            tooltip: { trigger: 'axis' },
+            legend: { data: ['Темп.', 'Ветер'], top: 30 },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
+            yAxis: { type: 'category', data: ['0м', '500м', '1км', '3км', '5км', '10км'], axisLabel: { color: '#7dd3fc' } },
+            series: [
+                { name: 'Темп.', type: 'line', data: [24, 18, 12, 0, -15, -45], color: '#7dd3fc', smooth: true },
+                { name: 'Ветер', type: 'line', data: [3, 8, 15, 25, 45, 80], color: '#d4ff8f', smooth: true }
+            ]
+        };
+        profileChart.setOption(option);
     }
 
-    // Initializations
     let map = null;
     function initMap() {
         if (map) return;
-        map = L.map('windyMap', { zoomControl: false }).setView([55.75, 37.61], 10);
+        map = L.map('windyMap', { zoomControl: false }).setView([45.0, 39.0], 10);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
     }
 
-    function initProfile() {
-        const ctx = document.getElementById('profileChart').getContext('2d');
-        if (window.pChart) window.pChart.destroy();
-        window.pChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['0m', '500m', '1k', '3k', '5k', '10k'],
-                datasets: [{
-                    label: 'Temp Profile',
-                    data: [24, 20, 15, 5, -10, -45],
-                    borderColor: '#7dd3fc',
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { grid: { color: 'rgba(255,255,255,0.05)' } },
-                    x: { grid: { display: false } }
-                }
-            }
-        });
-    }
-
-    // Start
     connectWS();
-
-    // Demo simulation
-    setInterval(() => {
-        if (state.ws && state.ws.readyState !== WebSocket.OPEN) {
-            handleUpdate({ type: 'rod_data', id: 1, bite: Math.floor(Math.random() * 40), accel: 9.8 + Math.random() * 0.2 });
-            handleUpdate({ type: 'rod_data', id: 2, bite: Math.floor(Math.random() * 40), accel: 9.7 + Math.random() * 0.2 });
-        }
-    }, 5000);
 });

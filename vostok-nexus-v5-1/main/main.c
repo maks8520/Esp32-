@@ -8,6 +8,10 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_http_server.h"
+#include "esp_spiffs.h"
+#include "driver/sdspi_host.h"
+#include "driver/spi_common.h"
+#include "sdmmc_cmd.h"
 #include "driver/i2c.h"
 #include "driver/uart.h"
 #include "driver/gpio.h"
@@ -22,6 +26,7 @@ int client_fd = -1;
 QueueHandle_t log_queue;
 
 static void peripherals_init() {
+    // I2C Init
     i2c_config_t i2c_conf = {
         .mode = I2C_MODE_MASTER,
         .sda_io_num = PIN_I2C_SDA,
@@ -33,6 +38,7 @@ static void peripherals_init() {
     i2c_param_config(I2C_NUM_0, &i2c_conf);
     i2c_driver_install(I2C_NUM_0, i2c_conf.mode, 0, 0, 0);
 
+    // UART Init
     uart_config_t uart_config = {
         .baud_rate = 9600,
         .data_bits = UART_DATA_8_BITS,
@@ -43,6 +49,27 @@ static void peripherals_init() {
     uart_param_config(UART_NUM_1, &uart_config);
     uart_set_pin(UART_NUM_1, PIN_GPS_TX, PIN_GPS_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     uart_driver_install(UART_NUM_1, 1024, 0, 0, NULL, 0);
+
+    // SPIFFS Init
+    esp_vfs_spiffs_conf_t conf = {
+      .base_path = "/spiffs",
+      .partition_label = NULL,
+      .max_files = 5,
+      .format_if_mount_failed = true
+    };
+    esp_vfs_spiffs_register(&conf);
+
+    // SD SPI Init
+    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+    spi_bus_config_t bus_cfg = {
+        .mosi_io_num = PIN_SD_MOSI,
+        .miso_io_num = PIN_SD_MISO,
+        .sclk_io_num = PIN_SD_CLK,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+        .max_transfer_sz = 4000,
+    };
+    spi_bus_initialize(host.slot, &bus_cfg, SDSPI_DEFAULT_DMA);
 }
 
 static esp_err_t ws_handler(httpd_req_t *req) {

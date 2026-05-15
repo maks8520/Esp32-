@@ -3,17 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>VOSTOK NEXUS v5.1 ULTRA</title>
+    <title>VOSTOK NEXUS v5.1 ULTRA PREMIUM</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="manifest" href="manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
     <div class="noise-overlay"></div>
     <div class="scanlines"></div>
+    <div class="bg-gradient"></div>
 
     <header>
         <div class="logo">VOSTOK<span>NEXUS</span> <small>v5.1</small></div>
@@ -36,108 +37,98 @@
                     <circle class="gauge-bg" cx="100" cy="100" r="85" stroke-width="12" fill="none"/>
                     <circle class="gauge-fill" id="predictorGauge" cx="100" cy="100" r="85" stroke-width="12" fill="none" stroke-dasharray="534" stroke-dashoffset="534"/>
                 </svg>
-                <div class="gauge-center">
-                    <div class="predictor-label">AI BITE PREDICTOR</div>
+                <div class="gauge-center" style="position: absolute; text-align: center;">
+                    <div style="font-size: 0.6rem; letter-spacing: 2px; opacity: 0.6;">AI ПРЕДИКТОР</div>
                     <div class="predictor-value" id="predictorVal">0%</div>
                 </div>
             </div>
 
             <div class="rod-cards">
                 <div class="rod-card glass-card" id="rod-1">
-                    <div class="rod-header">ROD 01</div>
-                    <div class="rod-data-row">
-                        <span class="data-label">ACCEL:</span> <span class="data-val" id="rod-1-accel">9.8</span>
+                    <div class="rod-header">УДОЧКА 01</div>
+                    <div class="rod-data-row" style="font-family: var(--font-data); font-size: 1.1rem; margin-bottom: 10px;">
+                        <span style="opacity:0.5; font-size: 0.7rem;">ACCEL:</span> <span class="data-val" id="rod-1-accel">9.8</span>
                     </div>
-                    <div class="rod-status" id="rod-1-status">READY</div>
+                    <div class="rod-status" id="rod-1-status">ОЖИДАНИЕ</div>
                 </div>
                 <div class="rod-card glass-card" id="rod-2">
-                    <div class="rod-header">ROD 02</div>
-                    <div class="rod-data-row">
-                        <span class="data-label">ACCEL:</span> <span class="data-val" id="rod-2-accel">9.8</span>
+                    <div class="rod-header">УДОЧКА 02</div>
+                    <div class="rod-data-row" style="font-family: var(--font-data); font-size: 1.1rem; margin-bottom: 10px;">
+                        <span style="opacity:0.5; font-size: 0.7rem;">ACCEL:</span> <span class="data-val" id="rod-2-accel">9.8</span>
                     </div>
-                    <div class="rod-status" id="rod-2-status">READY</div>
+                    <div class="rod-status" id="rod-2-status">ОЖИДАНИЕ</div>
                 </div>
             </div>
 
-            <div class="quick-meteo glass-card">
+            <div class="quick-meteo glass-card" style="display: flex; justify-content: space-around; text-align: center;">
                 <div class="meteo-item">
-                    <span class="m-val" id="m-temp">24°C</span>
-                    <span class="m-lbl">AIR TEMP</span>
+                    <div id="m-temp" style="font-size: 1.4rem; font-weight: 700;">24°C</div>
+                    <div style="font-size: 0.6rem; opacity: 0.5;">ТЕМП. ВОЗДУХА</div>
                 </div>
-                <div class="meteo-divider"></div>
                 <div class="meteo-item">
-                    <span class="m-val" id="m-wind">3.2m/s</span>
-                    <span class="m-lbl">WIND SPEED</span>
+                    <div id="m-wind" style="font-size: 1.4rem; font-weight: 700;">3.2м/с</div>
+                    <div style="font-size: 0.6rem; opacity: 0.5;">СКОРОСТЬ ВЕТРА</div>
                 </div>
             </div>
         </section>
 
-        <!-- Meteo Map -->
+        <!-- Meteo -->
         <section id="meteo" class="page">
-            <div class="map-container glass-card">
-                <div id="windyMap"></div>
-                <div class="map-controls">
-                    <button class="map-btn" onclick="setLayer('wind')">WIND</button>
-                    <button class="map-btn" onclick="setLayer('temp')">TEMP</button>
-                    <button class="map-btn" onclick="setLayer('pressure')">PRES</button>
+            <div class="glass-card" style="padding: 10px;">
+                <div id="windyMap" style="height: 300px; border-radius: 20px;"></div>
+            </div>
+            <div class="glass-card">
+                <div style="font-size: 0.7rem; opacity: 0.5; margin-bottom: 10px;">ОБЛАЧНОСТЬ</div>
+                <div style="display: flex; align-items: baseline; gap: 10px;">
+                    <div id="cloud-pct" style="font-size: 1.8rem; font-weight: 700;">75%</div>
+                    <div id="cloud-scale" style="font-size: 1rem; opacity: 0.7;">(8/10)</div>
+                    <div id="cloud-desc" style="color: var(--cyan); font-weight: 700; margin-left: auto;">ПАСМУРНО</div>
                 </div>
             </div>
         </section>
 
         <!-- Profile -->
         <section id="profile" class="page">
-            <div class="profile-header">VERTICAL METEO PROFILE</div>
-            <div class="profile-container glass-card">
-                <canvas id="profileChart"></canvas>
-            </div>
-            <div class="profile-details glass-card">
-                <table class="data-table">
-                    <thead><tr><th>HEIGHT</th><th>TEMP</th><th>WIND</th></tr></thead>
-                    <tbody id="profile-table-body"></tbody>
-                </table>
+            <div class="glass-card" style="height: 480px;">
+                <div id="profileChart"></div>
             </div>
         </section>
 
         <!-- Fishing Log -->
         <section id="fishing" class="page">
-            <div class="timeline glass-card">
-                <div class="timeline-header">BITE TIMELINE</div>
-                <canvas id="biteTimeline"></canvas>
+            <div class="glass-card">
+                <div style="font-size: 0.7rem; opacity: 0.5; margin-bottom: 15px;">ХРОНОЛОГИЯ ПОКЛЕВОК</div>
+                <div id="timeline-container" style="height: 120px; border-left: 2px solid var(--glass-border); padding-left: 15px; overflow-y: auto;">
+                    <!-- Timeline items -->
+                </div>
             </div>
-            <button class="ai-fish-id-btn">
+            <button class="ai-fish-id-btn" style="width: 100%; margin-top: 20px;">
                 <span class="scanner-line"></span>
-                📸 AI FISH ID
+                📸 AI ИДЕНТИФИКАЦИЯ
             </button>
         </section>
 
         <!-- Settings -->
         <section id="settings" class="page">
-            <div class="settings-group glass-card">
-                <div class="group-title">CONNECTION</div>
-                <div class="setting-row"><span>SSID:</span> <span class="setting-val">VOSTOK_NEXUS_V5</span></div>
-                <div class="setting-row"><span>WebSocket:</span> <span class="setting-val" id="ws-status">DISCONNECTED</span></div>
-            </div>
-            <div class="settings-group glass-card">
-                <div class="group-title">SENSOR CALIBRATION</div>
-                <div class="setting-row">
-                    <label>Sensitivity</label>
-                    <input type="range" min="0" max="100" value="75">
+            <div class="glass-card">
+                <div style="font-size: 0.8rem; font-weight: 700; margin-bottom: 15px; color: var(--lime);">СЕТЬ</div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span>SSID:</span> <span style="font-family: var(--font-data);">VOSTOK_NEXUS_V5</span>
                 </div>
-                <button class="test-btn">CALIBRATE MPU6050</button>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>WebSocket:</span> <span id="ws-status" style="color: #ef4444;">ОТКЛЮЧЕН</span>
+                </div>
             </div>
-            <div class="settings-group glass-card danger">
-                <div class="group-title">DANGER ZONE</div>
-                <button class="danger-btn">FACTORY RESET</button>
-            </div>
+            <button class="glass-card" style="width: 100%; color: #ef4444; border-color: rgba(239, 68, 68, 0.3); font-weight: 700;">СБРОС НАСТРОЕК</button>
         </section>
     </main>
 
     <nav class="bottom-nav">
-        <button class="nav-item active" data-page="dashboard">DASH</button>
-        <button class="nav-item" data-page="meteo">MAP</button>
-        <button class="nav-item" data-page="profile">PROFILE</button>
-        <button class="nav-item" data-page="fishing">LOG</button>
-        <button class="nav-item" data-page="settings">SET</button>
+        <button class="nav-item active" data-page="dashboard">ОБЗОР</button>
+        <button class="nav-item" data-page="meteo">МЕТЕО</button>
+        <button class="nav-item" data-page="profile">ПРОФИЛЬ</button>
+        <button class="nav-item" data-page="fishing">ЛОГ</button>
+        <button class="nav-item" data-page="settings">НАСТР.</button>
     </nav>
 
     <script src="script.js"></script>

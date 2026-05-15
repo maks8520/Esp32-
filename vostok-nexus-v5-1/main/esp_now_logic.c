@@ -22,9 +22,15 @@ typedef struct {
 } espnow_event_t;
 
 static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) {
+    // Phase 1 Security: Validate size
+    if (len != sizeof(rod_data_t)) {
+        ESP_LOGW(TAG, "Invalid packet size: %d", len);
+        return;
+    }
+
     espnow_event_t evt;
     memcpy(evt.mac, recv_info->src_addr, 6);
-    memcpy(evt.data, data, len > sizeof(evt.data) ? sizeof(evt.data) : len);
+    memcpy(evt.data, data, sizeof(rod_data_t));
     evt.len = len;
     xQueueSend(espnow_data_queue, &evt, 0);
 }
@@ -33,31 +39,35 @@ void espnow_processing_task(void *pvParameters) {
     espnow_event_t evt;
     while (1) {
         if (xQueueReceive(espnow_data_queue, &evt, portMAX_DELAY)) {
-            if (evt.len == sizeof(rod_data_t)) {
-                rod_data_t rod;
-                memcpy(&rod, evt.data, evt.len);
+            rod_data_t rod;
+            memcpy(&rod, evt.data, sizeof(rod_data_t));
 
-                cJSON *root = cJSON_CreateObject();
-                cJSON_AddStringToObject(root, "type", "rod_data");
-                cJSON_AddNumberToObject(root, "id", rod.rod_id);
-                cJSON_AddNumberToObject(root, "bite", rod.bite_intensity);
-                cJSON_AddNumberToObject(root, "hall", (double)rod.hall_val);
-                cJSON_AddNumberToObject(root, "accel", (double)rod.accel_z);
-
-                char *json_str = cJSON_PrintUnformatted(root);
-
-                log_msg_t log_msg;
-                strncpy(log_msg.data, json_str, sizeof(log_msg.data) - 1);
-                xQueueSend(log_queue, &log_msg, 0);
-
-                if (client_fd != -1) {
-                    httpd_ws_frame_t ws_pkt = { .payload = (uint8_t*)json_str, .len = strlen(json_str), .type = HTTPD_WS_TYPE_TEXT };
-                    httpd_ws_send_frame_async(server, client_fd, &ws_pkt);
-                }
-
-                cJSON_Delete(root);
-                free(json_str);
+            // Phase 1 Security: Validate rod_id
+            if (rod.rod_id == 0 || rod.rod_id > 250) {
+                ESP_LOGW(TAG, "Security Alert: Invalid rod_id %d", rod.rod_id);
+                continue;
             }
+
+            cJSON *root = cJSON_CreateObject();
+            cJSON_AddStringToObject(root, "type", "rod_data");
+            cJSON_AddNumberToObject(root, "id", rod.rod_id);
+            cJSON_AddNumberToObject(root, "bite", rod.bite_intensity);
+            cJSON_AddNumberToObject(root, "hall", (double)rod.hall_val);
+            cJSON_AddNumberToObject(root, "accel", (double)rod.accel_z);
+
+            char *json_str = cJSON_PrintUnformatted(root);
+
+            log_msg_t log_msg;
+            strncpy(log_msg.data, json_str, sizeof(log_msg.data) - 1);
+            xQueueSend(log_queue, &log_msg, 0);
+
+            if (client_fd != -1) {
+                httpd_ws_frame_t ws_pkt = { .payload = (uint8_t*)json_str, .len = strlen(json_str), .type = HTTPD_WS_TYPE_TEXT };
+                httpd_ws_send_frame_async(server, client_fd, &ws_pkt);
+            }
+
+            cJSON_Delete(root);
+            free(json_str);
         }
     }
 }

@@ -2,10 +2,10 @@
     --lime: #d4ff8f;
     --cyan: #7dd3fc;
     --bg-dark: #020617;
-    --glass-bg: rgba(15, 23, 42, 0.4);
+    --glass-bg: rgba(15, 23, 42, 0.45);
     --glass-border: rgba(255, 255, 255, 0.12);
-    --glow-lime: 0 0 20px rgba(212, 255, 143, 0.4);
-    --glow-cyan: 0 0 20px rgba(125, 211, 252, 0.4);
+    --glow-lime: 0 0 25px rgba(212, 255, 143, 0.45);
+    --glow-cyan: 0 0 25px rgba(125, 211, 252, 0.45);
     --font-main: 'Space Grotesk', sans-serif;
     --font-data: 'JetBrains Mono', monospace;
 }
@@ -24,7 +24,18 @@ body {
     width: 100vw;
 }
 
-/* Premium Background Effects */
+/* Glassmorphism 25px blur */
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border: 1px solid var(--glass-border);
+    border-radius: 28px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: inset 0 0 25px rgba(255, 255, 255, 0.03);
+}
+
 .noise-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
@@ -33,160 +44,100 @@ body {
 
 .scanlines {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: linear-gradient(to bottom, rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
+    background: linear-gradient(to bottom, rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.18) 50%);
     background-size: 100% 4px; pointer-events: none; z-index: 1001;
 }
 
-.bg-gradient {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: radial-gradient(circle at 50% -20%, #1e293b 0%, #020617 80%);
-    z-index: -1;
-}
-
 header {
-    height: 70px;
-    padding: env(safe-area-inset-top) 20px 0;
+    height: 75px;
+    padding: env(safe-area-inset-top) 24px 0;
     display: flex; justify-content: space-between; align-items: center;
-    backdrop-filter: blur(30px); border-bottom: 1px solid var(--glass-border);
+    backdrop-filter: blur(35px); border-bottom: 1px solid var(--glass-border);
     position: relative; z-index: 10;
 }
 
-.logo { font-weight: 700; letter-spacing: 2px; font-size: 1.2rem; }
+.logo { font-weight: 700; letter-spacing: 2px; font-size: 1.3rem; text-transform: uppercase; }
 .logo span { color: var(--lime); text-shadow: var(--glow-lime); }
-.logo small { font-size: 0.6rem; opacity: 0.5; vertical-align: super; margin-left: 4px; }
 
-.status-indicator { display: flex; align-items: center; gap: 8px; }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; transition: 0.3s; }
+.status-dot { width: 10px; height: 10px; border-radius: 50%; transition: 0.4s; }
 .status-dot.connected { background: var(--lime); box-shadow: var(--glow-lime); }
-.status-dot.disconnected { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
+.status-dot.disconnected { background: #ef4444; box-shadow: 0 0 15px #ef4444; }
 
 main {
-    height: calc(100vh - 150px);
+    height: calc(100vh - 155px);
     overflow-y: auto;
-    padding: 20px;
+    padding: 24px;
     -webkit-overflow-scrolling: touch;
 }
 
-.page { display: none; animation: fadeIn 0.4s ease-out; }
+.page { display: none; animation: slideIn 0.45s cubic-bezier(0.23, 1, 0.32, 1); }
 .page.active { display: block; }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(15px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-.glass-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
-    border-radius: 24px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.02);
-}
-
-/* AI Predictor Gauge */
+/* Dashboard UI */
 .ai-gauge-container {
     position: relative;
-    width: 220px;
-    height: 220px;
-    margin: 0 auto 30px;
+    width: 240px;
+    height: 240px;
+    margin: 0 auto 35px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.ultra-gauge {
-    width: 100%;
-    height: 100%;
-    transform: rotate(-90deg);
-}
-
-.gauge-bg { stroke: rgba(255,255,255,0.05); }
+.ultra-gauge { width: 100%; height: 100%; transform: rotate(-90deg); }
+.gauge-bg { stroke: rgba(255,255,255,0.06); }
 .gauge-fill {
     stroke: url(#gaugeGradient);
     stroke-linecap: round;
-    transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.gauge-center {
-    position: absolute;
-    text-align: center;
-}
+.predictor-value { font-size: 2.8rem; font-weight: 700; color: var(--lime); text-shadow: var(--glow-lime); font-family: var(--font-data); }
 
-.predictor-label { font-size: 0.6rem; letter-spacing: 2px; opacity: 0.6; margin-bottom: 5px; }
-.predictor-value { font-size: 2.5rem; font-weight: 700; color: var(--lime); text-shadow: var(--glow-lime); font-family: var(--font-data); }
-
-/* Rod Cards */
-.rod-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.rod-card { text-align: center; transition: 0.3s; }
-.rod-header { font-size: 0.7rem; letter-spacing: 1px; opacity: 0.5; margin-bottom: 10px; }
-.rod-data-row { font-family: var(--font-data); font-size: 1.1rem; margin-bottom: 10px; }
-.data-val { color: var(--cyan); }
-.rod-status { font-size: 0.6rem; font-weight: 700; padding: 4px 8px; border-radius: 10px; background: rgba(255,255,255,0.05); }
+/* Rod Grid */
+.rod-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.rod-header { font-size: 0.75rem; letter-spacing: 2px; opacity: 0.6; margin-bottom: 12px; font-weight: 700; }
+.data-val { color: var(--cyan); font-weight: 700; }
 
 .rod-card.bite {
     border-color: var(--lime);
-    animation: wobble 0.2s infinite;
-    background: rgba(212, 255, 143, 0.1);
+    animation: strike-vibrate 0.1s infinite;
+    background: rgba(212, 255, 143, 0.15);
 }
 
-@keyframes wobble {
-    0% { transform: rotate(0); }
-    25% { transform: rotate(1deg); }
-    75% { transform: rotate(-1deg); }
+@keyframes strike-vibrate {
+    0%, 100% { transform: translate(0,0); }
+    25% { transform: translate(1px, 1px); }
+    75% { transform: translate(-1px, -1px); }
 }
 
-/* Bottom Nav */
+/* Bottom Nav Premium */
 .bottom-nav {
-    height: 80px;
+    height: 85px;
     padding-bottom: env(safe-area-inset-bottom);
     display: flex; justify-content: space-around; align-items: center;
-    background: rgba(15, 23, 42, 0.8);
-    backdrop-filter: blur(25px);
+    background: rgba(10, 15, 28, 0.85);
+    backdrop-filter: blur(30px);
     border-top: 1px solid var(--glass-border);
     position: fixed; bottom: 0; width: 100%;
 }
 
 .nav-item {
-    background: none; border: none; color: #64748b;
-    font-size: 0.6rem; font-weight: 700; letter-spacing: 1px;
-    display: flex; flex-direction: column; align-items: center; gap: 4px;
-    transition: 0.3s; padding: 10px;
+    background: none; border: none; color: #94a3b8;
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 1.5px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    transition: 0.4s; padding: 12px; text-transform: uppercase;
 }
 
 .nav-item.active { color: var(--lime); text-shadow: var(--glow-lime); }
 
-/* Maps & Profile */
-#windyMap { height: 300px; border-radius: 16px; margin-bottom: 15px; }
-.map-controls { display: flex; gap: 10px; justify-content: center; }
-.map-btn {
-    background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
-    color: #fff; padding: 8px 15px; border-radius: 12px; font-size: 0.7rem;
-}
+/* ECharts & Vertical Profile */
+#profileChart { height: 400px; width: 100%; }
 
-/* AI Fish ID */
-.ai-fish-id-btn {
-    width: 100%;
-    padding: 20px;
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    border: 1px solid var(--lime);
-    color: var(--lime);
-    font-weight: 700;
-    border-radius: 20px;
-    position: relative;
-    overflow: hidden;
-    cursor: pointer;
-    text-shadow: var(--glow-lime);
-}
-
-.scanner-line {
-    position: absolute; top: 0; left: 0; width: 100%; height: 2px;
-    background: var(--lime); box-shadow: var(--glow-lime);
-    animation: scan 2s linear infinite;
-}
-
-@keyframes scan {
-    0% { top: 0; }
-    100% { top: 100%; }
-}
+/* Russian Localization Classes */
+.ru-text { font-family: var(--font-main); }
