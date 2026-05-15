@@ -3,7 +3,6 @@
 #include "nvs_handler.h"
 #include "config.h"
 #include "esp_log.h"
-#include "cJSON.h"
 
 static const char* TAG = "NVS";
 

@@ -16,12 +16,7 @@
 #include "nvs_handler.h"
 #include "esp_now_logic.h"
 
-vostok-nexus-v5-1-ultra-premium-initial-5231716576209781774
 static const char *TAG = "VOSTOK_BASE";
-
-
-static const char *TAG = "VOSTOK_MAIN";
-main
 httpd_handle_t server = NULL;
 int client_fd = -1;
 QueueHandle_t log_queue;

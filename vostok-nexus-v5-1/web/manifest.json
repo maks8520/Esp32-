@@ -1,13 +1,14 @@
 {
-  "name": "VOSTOK NEXUS v5.1",
+  "name": "VOSTOK NEXUS v5.1 ULTRA",
   "short_name": "VOSTOK",
-  "start_url": "index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#020617",
   "theme_color": "#020617",
+  "description": "Ultra Premium Fishing Telemetry",
   "icons": [
     {
-      "src": "https://img.icons8.com/ios-filled/512/d4ff8f/fishing-pole.png",
+      "src": "https://img.icons8.com/fluency/512/anchor.png",
       "sizes": "512x512",
       "type": "image/png"
     }

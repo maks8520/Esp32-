@@ -1,25 +1,20 @@
-# VOSTOK NEXUS v5.1 - Hardware Mapping
+# VOSTOK NEXUS v5.1 Hardware Pin Mapping
 
-## Base Station (ESP32-S3 DevKit)
-| Component | Protocol | Pins (SDA/TX/MOSI) | Pins (SCL/RX/CLK) | CS/Other |
-|-----------|----------|-------------------|-------------------|----------|
-| BME280    | I2C      | GPIO 8            | GPIO 9            | -        |
-| NEO-7M GPS| UART     | GPIO 43           | GPIO 44           | -        |
-| MicroSD   | SPI      | GPIO 11           | GPIO 13           | CLK:12, CS:10|
-| DS18B20   | OneWire  | GPIO 14           | -                 | -        |
-| WS2812 RGB| PWM      | GPIO 48           | -                 | -        |
-| Buzzer    | PWM      | GPIO 21           | -                 | Active   |
-| Button 1  | Input    | GPIO 0            | -                 | Boot     |
-| Button 2  | Input    | GPIO 1            | -                 | -        |
+## Базовая станция (ESP32-S3 DevKit)
 
-## Rod Unit (ESP32-C3)
-| Component | Protocol | Pins (SDA/TX) | Pins (SCL/RX) | Other |
-|-----------|----------|---------------|---------------|-------|
-| MPU-6050  | I2C      | GPIO 4        | GPIO 5        | -     |
-| Hall 3144E| Analog   | GPIO 6        | -             | -     |
-| WS2812 RGB| PWM      | GPIO 7        | -             | -     |
+| Компонент | Интерфейс | Пины | Описание |
+|-----------|-----------|------|-------------|
+| **BME280** | I2C | SDA: 4, SCL: 5 | Темп, Влажность, Давление |
+| **NEO-7M** | UART | TX: 1, RX: 2 | GPS Модуль |
+| **MicroSD** | SPI | MOSI: 11, MISO: 13, SCK: 12, CS: 10 | Логирование данных |
+| **DS18B20** | OneWire | 14 | Внешний датчик темп. |
+| **WS2812** | Digital | 48 | RGB Статус LED |
+| **Buzzer** | Digital | 45 | Активный зуммер |
 
-## Software Requirements
-- ESP-IDF v5.1+
-- Node.js (for web preview)
-- WebSocket client support in browser
+## Удочка (ESP32-C3)
+
+| Компонент | Интерфейс | Пины | Описание |
+|-----------|-----------|------|-------------|
+| **MPU6050** | I2C | SDA: 8, SCL: 9 | Акселерометр / Гиро |
+| **Hall 3144E**| Digital | 3 | Датчик Холла (Поклевка) |
+| **WS2812** | Digital | 2 | RGB Статус LED |

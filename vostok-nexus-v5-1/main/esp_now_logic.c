@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdlib.h>
 #include "esp_now_logic.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
@@ -40,7 +41,8 @@ void espnow_processing_task(void *pvParameters) {
                 cJSON_AddStringToObject(root, "type", "rod_data");
                 cJSON_AddNumberToObject(root, "id", rod.rod_id);
                 cJSON_AddNumberToObject(root, "bite", rod.bite_intensity);
-                cJSON_AddNumberToObject(root, "hall", rod.hall_val);
+                cJSON_AddNumberToObject(root, "hall", (double)rod.hall_val);
+                cJSON_AddNumberToObject(root, "accel", (double)rod.accel_z);
 
                 char *json_str = cJSON_PrintUnformatted(root);
 
