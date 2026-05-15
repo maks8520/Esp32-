@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>VOSTOK NEXUS v5.1 ULTRA PREMIUM</title>
+    <title>VOSTOK NEXUS v5.1 ULTRA</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="manifest" href="manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -12,13 +12,13 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
-    <div class="noise-overlay" aria-hidden="true"></div>
-    <div class="scanlines" aria-hidden="true"></div>
+    <div class="noise-overlay"></div>
+    <div class="scanlines"></div>
 
     <header>
         <div class="logo">VOSTOK<span>NEXUS</span> <small>v5.1</small></div>
         <div class="status-indicator">
-            <span class="status-dot disconnected" role="status" aria-label="Статус системы"></span>
+            <span class="status-dot disconnected"></span>
         </div>
     </header>
 
@@ -45,24 +45,89 @@
             <div class="rod-cards">
                 <div class="rod-card glass-card" id="rod-1">
                     <div class="rod-header">ROD 01</div>
+                    <div class="rod-data-row">
+                        <span class="data-label">ACCEL:</span> <span class="data-val" id="rod-1-accel">9.8</span>
+                    </div>
                     <div class="rod-status" id="rod-1-status">READY</div>
                 </div>
                 <div class="rod-card glass-card" id="rod-2">
                     <div class="rod-header">ROD 02</div>
+                    <div class="rod-data-row">
+                        <span class="data-label">ACCEL:</span> <span class="data-val" id="rod-2-accel">9.8</span>
+                    </div>
                     <div class="rod-status" id="rod-2-status">READY</div>
+                </div>
+            </div>
+
+            <div class="quick-meteo glass-card">
+                <div class="meteo-item">
+                    <span class="m-val" id="m-temp">24°C</span>
+                    <span class="m-lbl">AIR TEMP</span>
+                </div>
+                <div class="meteo-divider"></div>
+                <div class="meteo-item">
+                    <span class="m-val" id="m-wind">3.2m/s</span>
+                    <span class="m-lbl">WIND SPEED</span>
                 </div>
             </div>
         </section>
 
-        <!-- Meteo -->
+        <!-- Meteo Map -->
         <section id="meteo" class="page">
-            <div id="windyMap" class="glass-card"></div>
+            <div class="map-container glass-card">
+                <div id="windyMap"></div>
+                <div class="map-controls">
+                    <button class="map-btn" onclick="setLayer('wind')">WIND</button>
+                    <button class="map-btn" onclick="setLayer('temp')">TEMP</button>
+                    <button class="map-btn" onclick="setLayer('pressure')">PRES</button>
+                </div>
+            </div>
         </section>
 
         <!-- Profile -->
         <section id="profile" class="page">
-            <div class="glass-card" style="padding: 20px;">
-                <canvas id="meteoProfileChart" style="height: 300px;"></canvas>
+            <div class="profile-header">VERTICAL METEO PROFILE</div>
+            <div class="profile-container glass-card">
+                <canvas id="profileChart"></canvas>
+            </div>
+            <div class="profile-details glass-card">
+                <table class="data-table">
+                    <thead><tr><th>HEIGHT</th><th>TEMP</th><th>WIND</th></tr></thead>
+                    <tbody id="profile-table-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Fishing Log -->
+        <section id="fishing" class="page">
+            <div class="timeline glass-card">
+                <div class="timeline-header">BITE TIMELINE</div>
+                <canvas id="biteTimeline"></canvas>
+            </div>
+            <button class="ai-fish-id-btn">
+                <span class="scanner-line"></span>
+                📸 AI FISH ID
+            </button>
+        </section>
+
+        <!-- Settings -->
+        <section id="settings" class="page">
+            <div class="settings-group glass-card">
+                <div class="group-title">CONNECTION</div>
+                <div class="setting-row"><span>SSID:</span> <span class="setting-val">VOSTOK_NEXUS_V5</span></div>
+                <div class="setting-row"><span>WebSocket:</span> <span class="setting-val" id="ws-status">DISCONNECTED</span></div>
+            </div>
+            <div class="settings-group glass-card">
+                <div class="group-title">SENSOR CALIBRATION</div>
+                <div class="setting-row">
+                    <label>Sensitivity</label>
+                    <input type="range" min="0" max="100" value="75">
+                </div>
+                <button class="test-btn">CALIBRATE MPU6050</button>
+            </div>
+            <div class="settings-group glass-card danger">
+                <div class="group-title">DANGER ZONE</div>
+                <button class="danger-btn">FACTORY RESET</button>
             </div>
         </section>
     </main>
@@ -71,6 +136,8 @@
         <button class="nav-item active" data-page="dashboard">DASH</button>
         <button class="nav-item" data-page="meteo">MAP</button>
         <button class="nav-item" data-page="profile">PROFILE</button>
+        <button class="nav-item" data-page="fishing">LOG</button>
+        <button class="nav-item" data-page="settings">SET</button>
     </nav>
 
     <script src="script.js"></script>

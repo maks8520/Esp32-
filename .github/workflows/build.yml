@@ -16,8 +16,11 @@ jobs:
         with:
           submodules: 'recursive'
 
+      - name: Set git safe directory
+        run: git config --global --add safe.directory /__w/vostok-nexus-v5.1-production-ready/vostok-nexus-v5.1-production-ready
+
       - name: Cache ESP-IDF components
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.espressif
@@ -50,8 +53,11 @@ jobs:
         with:
           submodules: 'recursive'
 
+      - name: Set git safe directory
+        run: git config --global --add safe.directory /__w/vostok-nexus-v5-1-production-ready/vostok-nexus-v5-1-production-ready
+
       - name: Cache ESP-IDF components
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.espressif

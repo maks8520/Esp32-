@@ -1,13 +1,17 @@
-# VOSTOK NEXUS v5.1 Project Instructions
+# VOSTOK NEXUS v5.1 - Development Guide
 
-## Build and Flash
-- Base Station: Use ESP-IDF v5.x to build and flash to ESP32-S3.
-- Rod Station: Use ESP-IDF v5.x to build and flash to ESP32-C3.
+## Logic Architecture
+- **Base Station (S3):**
+  - Task Pinned Core 0: Low-latency ESP-NOW, Sensor Interrupts.
+  - Task Pinned Core 1: Network Stack (WS/HTTP), SD Logging, UI updates.
+- **Rod Station (C3):**
+  - MPU-6050 & Hall data via I2C/GPIO.
+  - Periodic ESP-NOW telemetry to Base.
 
-## Web Interface
-- The web interface is a PWA. To update, modify files in `web/` and refresh the cache.
-- For deployment on the ESP32, the `web/` directory should be served using SPIFFS or embedded into the binary.
+## Design System (Glassmorphism 2.0)
+- Colors: Deep Navy (`#020617`), Lime (`#d4ff8f`), Cyan (`#7dd3fc`).
+- Effects: 25px blur, noise grain, scanlines.
+- Performance: requestAnimationFrame for gauge and animations.
 
-## Testing
-- Use the built-in simulation in `script.js` to test the UI without hardware.
-- Monitor serial output for ESP-NOW and WebSocket logs.
+## Hardware Config
+Refer to `HARDWARE_MAPPING.md` for exact pinouts on S3 and C3.

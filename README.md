@@ -1,27 +1,17 @@
 # VOSTOK NEXUS v5.1 ULTRA PREMIUM
 
-Профессиональная система телеметрии для рыбалки на базе ESP32-S3 и ESP32-C3.
+Production-quality telemetry system for professional fishing.
 
-## Структура проекта
-- `vostok-nexus-v5-1/`: Прошивка Базовой Станции (ESP32-S3) и Веб-интерфейс.
-- `vostok-nexus-v5-1/rod_firmware/`: Прошивка Удочки (ESP32-C3).
+## Project Structure
+- **/vostok-nexus-v5-1**: Main firmware for ESP32-S3 (Base Station).
+- **/vostok-nexus-v5-1/rod_firmware**: Firmware for ESP32-C3 (Rod Units).
+- **/vostok-nexus-v5-1/web**: Premium Glassmorphism 2.0 Web Dashboard (PWA).
 
-## Как прошить устройство
-Для прошивки используйте [ESP Web Flasher](https://espressif.github.io/esptool-js/):
+## Build & Deployment
+Builds are automated via GitHub Actions.
+To build locally:
+1. Base: `cd vostok-nexus-v5-1 && idf.py build`
+2. Rod: `cd vostok-nexus-v5-1/rod_firmware && idf.py build`
 
-1. Подключите ESP32 к компьютеру через USB.
-2. Скачайте артефакты сборки из раздела **Actions** этого репозитория.
-3. В веб-прошивальщике укажите следующие файлы и адреса:
-   - `bootloader.bin` -> адрес `0x0000`
-   - `partition-table.bin` -> адрес `0x8000`
-   - `vostok-nexus-base.bin` (или rod) -> адрес `0x10000`
-4. Нажмите **Program**, чтобы начать запись.
-
-## Особенности
-- **Dual-Core**: Сетевой стек на Ядре 1, телеметрия на Ядре 0.
-- **Glassmorphism 2.0**: Премиальный дизайн с эффектом матового стекла.
-- **Windy Map**: Центрирование карты по GPS NEO-7M.
-- **Haptics**: Виброотклик смартфона при поклевке.
-
-## Примечание по сборке
-Этот проект использует [IDF Component Manager](https://docs.espressif.com/projects/idf-component-manager/). Зависимости (например, `esp-now`) скачиваются автоматически при первом запуске `idf.py build`.
+## Hardware
+Refer to `HARDWARE_MAPPING.md` for pinouts.
