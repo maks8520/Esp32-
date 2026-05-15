@@ -24,7 +24,13 @@ jobs:
             vostok-nexus-v5-1/managed_components
             vostok-nexus-v5-1/dependencies.lock
           key: ${{ runner.os }}-esp-idf-base-${{ hashFiles('vostok-nexus-v5-1/main/idf_component.yml') }}
-
+      
+      - name: Clean build artifacts
+       run: |
+          rm -rf vostok-nexus-v5-1/build
+          rm -f vostok-nexus-v5-1/dependencies.lock
+          rm -rf vostok-nexus-v5-1/managed_components
+    
       - name: Build Base Station (ESP32-S3)
         working-directory: vostok-nexus-v5-1
         run: |
