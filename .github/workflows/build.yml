@@ -10,6 +10,11 @@ jobs:
   build-base:
     runs-on: ubuntu-latest
     container: espressif/idf:v5.1
+
+    defaults:
+  run:
+    shell: bash # Это заставит все шаги использовать Bash
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
