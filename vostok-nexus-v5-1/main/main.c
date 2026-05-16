@@ -7,6 +7,7 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_netif.h"
 #include "esp_http_server.h"
 #include "esp_spiffs.h"
 #include "driver/sdspi_host.h"
@@ -24,6 +25,20 @@ static const char *TAG = "VOSTOK_BASE";
 httpd_handle_t server = NULL;
 int client_fd = -1;
 QueueHandle_t log_queue;
+
+// 4. wifi_event_handler
+static void wifi_event_handler(void* arg, esp_event_base_t event_base,
+                                int32_t event_id, void* event_data) {
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        esp_wifi_connect();
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        ESP_LOGI(TAG, "Disconnected from AP, retrying...");
+        esp_wifi_connect();
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+        ESP_LOGI(TAG, "Successfully connected. Static IP: " IPSTR, IP2STR(&event->ip_info.ip));
+    }
+}
 
 static void peripherals_init() {
     // I2C Init
@@ -83,8 +98,10 @@ static esp_err_t ws_handler(httpd_req_t *req) {
 
 static const httpd_uri_t ws = { .uri = "/ws", .method = HTTP_GET, .handler = ws_handler, .is_websocket = true };
 
-void network_task(void *pvParameters) {
+// 5. network_stack_task
+void network_stack_task(void *pvParameters) {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.stack_size = 10240; // Requirement: config.stack_size = 10240
     config.core_id = 1;
     if (httpd_start(&server, &config) == ESP_OK) {
         httpd_register_uri_handler(server, &ws);
@@ -106,31 +123,42 @@ void app_main(void) {
     peripherals_init();
     log_queue = xQueueCreate(LOG_QUEUE_SIZE, sizeof(log_msg_t));
 
+    // 1. esp_netif_create_default_wifi_sta()
     esp_netif_init();
     esp_event_loop_create_default();
-    esp_netif_create_default_wifi_ap();
+    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
+
+    // 2. Stop DHCP client and set static IP parameters
+    esp_netif_dhcpc_stop(sta_netif);
+    esp_netif_ip_info_t ip_info;
+    esp_netif_str_to_ip4("192.168.43.100", &ip_info.ip);
+    esp_netif_str_to_ip4("192.168.43.1", &ip_info.gw);
+    esp_netif_str_to_ip4("255.255.255.0", &ip_info.netmask);
+    esp_netif_set_ip_info(sta_netif, &ip_info);
+
+    // Register event handlers
+    esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, NULL);
+    esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, NULL);
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     esp_wifi_init(&cfg);
-    esp_wifi_set_mode(WIFI_MODE_AP);
 
-    wifi_config_t ap_config = {
-        .ap = {
-            .ssid = WIFI_SSID,
-            .password = WIFI_PASS,
-            .ssid_len = strlen(WIFI_SSID),
-            .channel = ESPNOW_CHANNEL,
-            .max_connection = 4,
-            .authmode = WIFI_AUTH_WPA2_PSK
+    // 3. Configure STA mode for SSID "MY_PHONE" and Password "12345678"
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = "MY_PHONE",
+            .password = "12345678",
         },
     };
-    esp_wifi_set_config(WIFI_IF_AP, &ap_config);
+    esp_wifi_set_mode(WIFI_MODE_STA);
+    esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
     esp_wifi_start();
 
     espnow_init_base();
 
-    xTaskCreatePinnedToCore(network_task, "net_task", 4096, NULL, 5, NULL, 1);
+    // network_stack_task initialization
+    xTaskCreatePinnedToCore(network_stack_task, "net_stack_task", 10240, NULL, 5, NULL, 1);
     xTaskCreatePinnedToCore(sd_logging_task, "log_task", 4096, NULL, 4, NULL, 1);
 
-    ESP_LOGI(TAG, "VOSTOK NEXUS v5.1 S3 STARTED");
+    ESP_LOGI(TAG, "VOSTOK NEXUS v5.1 S3 STARTED (STA MODE, STATIC IP)");
 }
