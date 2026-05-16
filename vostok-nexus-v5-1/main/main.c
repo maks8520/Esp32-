@@ -155,6 +155,7 @@ void app_main(void) {
     esp_wifi_start();
 
     espnow_init_base();
+    esp_now_register_recv_cb(on_base_espnow_recv);
 
     // network_stack_task initialization
     xTaskCreatePinnedToCore(network_stack_task, "net_stack_task", 10240, NULL, 5, NULL, 1);
