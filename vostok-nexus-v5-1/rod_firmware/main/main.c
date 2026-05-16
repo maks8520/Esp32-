@@ -14,6 +14,9 @@
 static const char *TAG = "VOSTOK_ROD";
 uint8_t base_mac[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
+/* Глобальный флаг подтверждения доставки */
+volatile bool ack_received = false;
+
 /* Пины для ESP32-C3 (Удочка) */
 #define PIN_I2C_SDA     8
 #define PIN_I2C_SCL     9
@@ -28,6 +31,19 @@ typedef struct {
     uint16_t hall_val;
     uint8_t bite_intensity;
 } rod_data_t;
+
+/* Прототип функции колбэка отправки */
+void on_data_sent(const uint8_t *mac_addr, esp_now_send_status_t status);
+
+void on_data_sent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+    if (status == ESP_NOW_SEND_SUCCESS) {
+        ack_received = true;
+        ESP_LOGI(TAG, "Data sent successfully");
+    } else {
+        ack_received = false;
+        ESP_LOGE(TAG, "Data send failed");
+    }
+}
 
 void app_main(void) {
     /* Инициализация хранилища */
@@ -69,6 +85,10 @@ void app_main(void) {
 
     /* Настройка ESP-NOW */
     esp_now_init();
+
+    /* Регистрация системного колбэка отправки данных */
+    esp_now_register_send_cb(on_data_sent);
+
     esp_now_peer_info_t peerInfo = {};
     memcpy(peerInfo.peer_addr, base_mac, 6);
     peerInfo.channel = 1;
