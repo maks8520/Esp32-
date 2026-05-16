@@ -154,6 +154,73 @@ void sd_log_async_task(void *pvParameters) {
     }
 }
 
+
+/**
+ * @brief Задача для чтения и парсинга NMEA логов с GPS модуля
+ */
+void gps_task(void *pvParameters) {
+    uint8_t data[256];
+    char line[256];
+    int line_len = 0;
+
+    while (1) {
+        int rx_bytes = uart_read_bytes(UART_NUM_1, data, sizeof(data) - 1, pdMS_TO_TICKS(100));
+        if (rx_bytes > 0) {
+            for (int i = 0; i < rx_bytes; i++) {
+                if (data[i] == '\n' || data[i] == '\r') {
+                    if (line_len > 0) {
+                        line[line_len] = '\0';
+
+                        /* Поиск строки $GPGGA */
+                        if (strncmp(line, "$GPGGA", 6) == 0) {
+                            float raw_lat, raw_lon;
+                            char lat_dir, lon_dir;
+                            int fix_quality, satellites;
+
+                            /* Парсинг $GPGGA: $GPGGA,time,lat,N/S,lon,E/W,fix,satellites,... */
+                            if (sscanf(line, "$GPGGA,%*f,%f,%c,%f,%c,%d,%d", &raw_lat, &lat_dir, &raw_lon, &lon_dir, &fix_quality, &satellites) == 6) {
+                                if (fix_quality > 0) {
+                                    /* Перенос координат из DDMM.MMMM в Decimal Degrees */
+                                    int lat_deg = (int)(raw_lat / 100);
+                                    float lat_min = raw_lat - (lat_deg * 100);
+                                    float lat_dd = lat_deg + (lat_min / 60.0f);
+                                    if (lat_dir == 'S') lat_dd = -lat_dd;
+
+                                    int lon_deg = (int)(raw_lon / 100);
+                                    float lon_min = raw_lon - (lon_deg * 100);
+                                    float lon_dd = lon_deg + (lon_min / 60.0f);
+                                    if (lon_dir == 'W') lon_dd = -lon_dd;
+
+                                    /* Формирование JSON строки */
+                                    char json_str[128];
+                                    snprintf(json_str, sizeof(json_str), "{\"gps\": {\"lat\": %.6f, \"lon\": %.6f, \"satellites\": %d}}", lat_dd, lon_dd, satellites);
+
+                                    /* Асинхронная отправка JSON в активный WebSocket-клиент */
+                                    if (client_fd >= 0) {
+                                        httpd_ws_frame_t ws_pkt;
+                                        memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
+                                        ws_pkt.payload = (uint8_t*)json_str;
+                                        ws_pkt.len = strlen(json_str);
+                                        ws_pkt.type = HTTPD_WS_TYPE_TEXT;
+
+                                        httpd_ws_send_frame_async(server, client_fd, &ws_pkt);
+                                    }
+                                }
+                            }
+                        }
+                        line_len = 0;
+                    }
+                } else {
+                    if (line_len < sizeof(line) - 1) {
+                        line[line_len++] = (char)data[i];
+                    }
+                }
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
 void app_main(void) {
     /* Инициализация NVS, SPIFFS и Периферии */
     nvs_init_storage();
@@ -175,6 +242,10 @@ void app_main(void) {
     /* Сеть и Логи на Ядро 1 */
     xTaskCreatePinnedToCore(network_stack_task, "net_task", 4096, NULL, 5, NULL, 1);
     xTaskCreatePinnedToCore(sd_log_async_task, "log_task", 4096, NULL, 4, NULL, 1);
+
+    /* Задача GPS на Ядро 0 */
+    xTaskCreatePinnedToCore(gps_task, "gps_task", 4096, NULL, 3, NULL, 0);
+
 
     ESP_LOGI(TAG, "Система VOSTOK NEXUS v5.1 S3 ULTRA PREMIUM запущена.");
 }
