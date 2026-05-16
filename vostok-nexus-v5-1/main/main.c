@@ -74,7 +74,7 @@ static void spiffs_init() {
  * @brief Универсальный обработчик для отдачи статических файлов веб-интерфейса
  */
 static esp_err_t common_get_handler(httpd_req_t *req) {
-    char filepath[1100]; // УВЕЛИЧИЛИ РАЗМЕР БУФЕРА С 128 ДО 1100 БАЙТ, ЧТОБЫ ИСКЛЮЧИТЬ ИСПУГ КОМПИЛЯТОРА
+    char filepath[1100]; 
     const char *uri = req->uri;
 
     if (strcmp(uri, "/") == 0) {
@@ -104,6 +104,16 @@ static esp_err_t common_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+/* Структура URI для статики (Лежит ВЫШЕ сетевой задачи) */
+static const httpd_uri_t common_get_uri = {
+    .uri      = "/*",
+    .method   = HTTP_GET,
+    .handler  = common_get_handler
+};
+
+/**
+ * @brief Обработчик WebSocket соединений
+ */
 static esp_err_t ws_handler(httpd_req_t *req) {
     if (req->method == HTTP_GET) {
         client_fd = httpd_req_to_sockfd(req);
@@ -112,7 +122,13 @@ static esp_err_t ws_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-static const httpd_uri_t ws = { .uri = "/ws", .method = HTTP_GET, .handler = ws_handler, .is_websocket = true };
+/* Структура URI для WebSocket (Лежит ВЫШЕ сетевой задачи) */
+static const httpd_uri_t ws = { 
+    .uri = "/ws", 
+    .method = HTTP_GET, 
+    .handler = ws_handler, 
+    .is_websocket = true 
+};
 
 /**
  * @brief Сетевая задача (Ядро 1)
@@ -124,7 +140,7 @@ void network_stack_task(void *pvParameters) {
 
     if (httpd_start(&server, &config) == ESP_OK) {
         httpd_register_uri_handler(server, &ws);
-        httpd_register_uri_handler(server, &common_get_uri);
+        httpd_register_uri_handler(server, &common_get_uri); // Теперь всё объявлено выше и компилятор будет счастлив!
     }
     while(1) { vTaskDelay(pdMS_TO_TICKS(1000)); }
 }
