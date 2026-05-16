@@ -16,7 +16,7 @@
 #include "config.h"
 #include "nvs_handler.h"
 #include "esp_now_logic.h"
-
+#include "esp_spiffs.h"
 
 static const char *TAG = "VOSTOK_MAIN";
 httpd_handle_t server = NULL;
@@ -52,6 +52,64 @@ static void peripherals_init() {
     uart_driver_install(UART_NUM_1, 1024, 0, 0, NULL, 0);
 }
 
+/**
+ * @brief Инициализация файловой системы SPIFFS
+ */
+static void spiffs_init() {
+    esp_vfs_spiffs_conf_t conf = {
+        .base_path = "/spiffs",
+        .partition_label = "storage",
+        .max_files = 5,
+        .format_if_mount_failed = true
+    };
+    esp_err_t ret = esp_vfs_spiffs_register(&conf);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Ошибка монтирования SPIFFS (%s)", esp_err_to_name(ret));
+    } else {
+        ESP_LOGI(TAG, "SPIFFS успешно смонтирован.");
+    }
+}
+
+/**
+ * @brief Универсальный обработчик для отдачи статических файлов веб-интерфейса
+ */
+static esp_err_t common_get_handler(httpd_req_t *req) {
+    char filepath[128];
+    const char *uri = req->uri;
+
+    if (strcmp(uri, "/") == 0) {
+        uri = "/index.html";
+    }
+
+    snprintf(filepath, sizeof(filepath), "/spiffs%s", uri);
+
+    FILE *f = fopen(filepath, "r");
+    if (f == NULL) {
+        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Файл не найден");
+        return ESP_FAIL;
+    }
+
+    if (strstr(uri, ".html")) httpd_resp_set_type(req, "text/html");
+    else if (strstr(uri, ".css")) httpd_resp_set_type(req, "text/css");
+    else if (strstr(uri, ".js")) httpd_resp_set_type(req, "application/javascript");
+    else if (strstr(uri, ".json")) httpd_resp_set_type(req, "application/json");
+
+    char buffer[1024];
+    size_t read_bytes;
+    while ((read_bytes = fread(buffer, 1, sizeof(buffer), f)) > 0) {
+        httpd_resp_send_chunk(req, buffer, read_bytes);
+    }
+    fclose(f);
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
+}
+
+static const httpd_uri_t common_get_uri = {
+    .uri      = "/*",
+    .method   = HTTP_GET,
+    .handler  = common_get_handler
+};
+
 static esp_err_t ws_handler(httpd_req_t *req) {
     if (req->method == HTTP_GET) {
         client_fd = httpd_req_to_sockfd(req);
@@ -68,8 +126,11 @@ static const httpd_uri_t ws = { .uri = "/ws", .method = HTTP_GET, .handler = ws_
 void network_stack_task(void *pvParameters) {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.core_id = 1;
+    config.uri_match_fn = httpd_uri_match_wildcard;
+
     if (httpd_start(&server, &config) == ESP_OK) {
         httpd_register_uri_handler(server, &ws);
+        httpd_register_uri_handler(server, &common_get_uri);
     }
     while(1) { vTaskDelay(pdMS_TO_TICKS(1000)); }
 }
@@ -88,8 +149,9 @@ void sd_log_async_task(void *pvParameters) {
 }
 
 void app_main(void) {
-    /* Инициализация NVS и Периферии */
+    /* Инициализация NVS, SPIFFS и Периферии */
     nvs_init_storage();
+    spiffs_init();
     peripherals_init();
     log_queue = xQueueCreate(LOG_QUEUE_SIZE, sizeof(log_msg_t));
 
