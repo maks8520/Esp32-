@@ -2,77 +2,204 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>VOSTOK NEXUS v5.1 ULTRA PREMIUM</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="manifest" href="manifest.json">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VOSTOK NEXUS — Консоль Управления</title>
+    
+    <link rel="stylesheet" href="leaflet.css" />
+    <link rel="stylesheet" href="styles.css" />
+
+    <style>
+        /* Базовые стили для обеспечения работоспособности Glassmorphism, если styles.css пустой */
+        :root {
+            --bg-color: #0b0f19;
+            --panel-bg: rgba(17, 24, 39, 0.7);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --accent-cyan: #7dd3fc;
+            --accent-lime: #d4ff8f;
+            --text-main: #f3f4f6;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 25px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+        }
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #ef4444;
+        }
+        .status-badge.connected {
+            color: var(--accent-lime);
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: currentColor;
+            border-radius: 50%;
+            box-shadow: 0 0 10px currentColor;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 20px;
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        h2 {
+            margin-top: 0;
+            font-size: 18px;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 10px;
+            color: var(--accent-cyan);
+        }
+        #map {
+            width: 100%;
+            flex-grow: 1;
+            border-radius: 12px;
+            background: #1f2937;
+        }
+        .chart-container {
+            position: relative;
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: auto;
+        }
+        button {
+            background: rgba(125, 211, 252, 0.1);
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: var(--accent-cyan);
+            color: var(--bg-color);
+            box-shadow: 0 0 15px var(--accent-cyan);
+        }
+        button.action-lime {
+            border-color: var(--accent-lime);
+            color: var(--accent-lime);
+            background: rgba(212, 255, 143, 0.1);
+        }
+        button.action-lime:hover {
+            background: var(--accent-lime);
+            color: var(--bg-color);
+            box-shadow: 0 0 15px var(--accent-lime);
+        }
+    </style>
 </head>
 <body>
-    <div class="noise-overlay" aria-hidden="true"></div>
-    <div class="scanlines" aria-hidden="true"></div>
 
-    <header>
-        <div class="logo">VOSTOK<span>NEXUS</span> <small>v5.1</small></div>
-        <div class="status-indicator">
-            <span class="status-dot disconnected" role="status" aria-label="Статус системы"></span>
+    <header class="header">
+        <div style="display: flex; flex-direction: column;">
+            <span style="font-weight: 800; font-size: 20px; letter-spacing: 1px; color: #fff;">VOSTOK <span style="color: var(--accent-lime);">NEXUS</span></span>
+            <span style="font-size: 12px; color: #9ca3af;">Метеорологическая Edge AI Система v5.1</span>
+        </div>
+        <div id="ws-status" class="status-badge">
+            <div class="status-dot"></div>
+            <span id="status-text">OFFLINE</span>
         </div>
     </header>
 
-    <main id="app-content">
-        <!-- Dashboard -->
-        <section id="dashboard" class="page active">
-            <div class="ai-gauge-container">
-                <svg class="ultra-gauge" viewBox="0 0 200 200">
-                    <defs>
-                        <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" style="stop-color:#7dd3fc;stop-opacity:1" />
-                            <stop offset="100%" style="stop-color:#d4ff8f;stop-opacity:1" />
-                        </linearGradient>
-                    </defs>
-                    <circle class="gauge-bg" cx="100" cy="100" r="85" stroke-width="12" fill="none"/>
-                    <circle class="gauge-fill" id="predictorGauge" cx="100" cy="100" r="85" stroke-width="12" fill="none" stroke-dasharray="534" stroke-dashoffset="534"/>
-                </svg>
-                <div class="gauge-center">
-                    <div class="predictor-label">AI BITE PREDICTOR</div>
-                    <div class="predictor-value" id="predictorVal">0%</div>
+    <main class="dashboard-grid">
+        
+        <section class="panel">
+            <h2>Телеметрия & ИИ Анализ</h2>
+            <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #9ca3af;">Статус ИИ-Предиктора:</span>
+                    <span style="color: var(--accent-lime); font-weight: bold;">Активен (Локальный эмбеддинг)</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #9ca3af;">Аномалии давления:</span>
+                    <span id="anomaly-value" style="font-family: monospace;">Стабильно</span>
                 </div>
             </div>
-
-            <div class="rod-cards">
-                <div class="rod-card glass-card" id="rod-1">
-                    <div class="rod-header">ROD 01</div>
-                    <div class="rod-status" id="rod-1-status">READY</div>
-                </div>
-                <div class="rod-card glass-card" id="rod-2">
-                    <div class="rod-header">ROD 02</div>
-                    <div class="rod-status" id="rod-2-status">READY</div>
-                </div>
+            <div class="btn-group">
+                <button class="action-lime" onclick="sendMessage('calibrate')">Калибровка ИИ</button>
+                <button onclick="sendMessage('reset_logger')">Сброс лога</button>
             </div>
         </section>
 
-        <!-- Meteo -->
-        <section id="meteo" class="page">
-            <div id="windyMap" class="glass-card"></div>
-        </section>
-
-        <!-- Profile -->
-        <section id="profile" class="page">
-            <div class="glass-card" style="padding: 20px;">
-                <canvas id="meteoProfileChart" style="height: 300px;"></canvas>
+        <section class="panel">
+            <h2>Атмосферный Профиль</h2>
+            <div class="chart-container">
+                <canvas id="weatherChart"></canvas>
             </div>
         </section>
+
+        <section class="panel">
+            <h2>Геопозиция Базы & Эхолокация</h2>
+            <div id="map"></div>
+        </section>
+
     </main>
 
-    <nav class="bottom-nav">
-        <button class="nav-item active" data-page="dashboard">DASH</button>
-        <button class="nav-item" data-page="meteo">MAP</button>
-        <button class="nav-item" data-page="profile">PROFILE</button>
-    </nav>
-
+    <script src="chart.js"></script>
+    <script src="leaflet.js"></script>
+    
     <script src="script.js"></script>
+
+    <script>
+        // Интеграция WebSocket статуса напрямую в разметку для стабильности работы системы
+        const statusBadge = document.getElementById('ws-status');
+        const statusText = document.getElementById('status-text');
+
+        function updateWebSocketStatus(connected) {
+            if (connected) {
+                statusBadge.classList.add('connected');
+                statusText.innerText = 'ONLINE / CONNECTED';
+            } else {
+                statusBadge.classList.remove('connected');
+                statusText.innerText = 'OFFLINE / DISCONNECTED';
+            }
+        }
+
+        // Функция отправки отладочных команд на ESP32 через WebSocket
+        function sendMessage(command) {
+            if (window.wsClient && window.wsClient.readyState === WebSocket.OPEN) {
+                window.wsClient.send(JSON.stringify({ action: command, timestamp: Date.now() }));
+                console.log("Команда отправлена на Базу:", command);
+            } else {
+                alert("Нет связи с базовой станцией!");
+            }
+        }
+    </script>
 </body>
 </html>
