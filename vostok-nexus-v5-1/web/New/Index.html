@@ -1,494 +1,205 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-  <meta name="theme-color" content="#020912">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>VOSTOK NEXUS v5.1 ULTRA</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VOSTOK NEXUS — Консоль Управления</title>
+    
+    <link rel="stylesheet" href="leaflet.css" />
+    <link rel="stylesheet" href="styles.css" />
 
-  <!-- PWA Manifest -->
-  <link rel="manifest" href="manifest.json">
-
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Базовые стили для обеспечения работоспособности Glassmorphism, если styles.css пустой */
+        :root {
+            --bg-color: #0b0f19;
+            --panel-bg: rgba(17, 24, 39, 0.7);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --accent-cyan: #7dd3fc;
+            --accent-lime: #d4ff8f;
+            --text-main: #f3f4f6;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 25px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+        }
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #ef4444;
+        }
+        .status-badge.connected {
+            color: var(--accent-lime);
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: currentColor;
+            border-radius: 50%;
+            box-shadow: 0 0 10px currentColor;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 20px;
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        h2 {
+            margin-top: 0;
+            font-size: 18px;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 10px;
+            color: var(--accent-cyan);
+        }
+        #map {
+            width: 100%;
+            flex-grow: 1;
+            border-radius: 12px;
+            background: #1f2937;
+        }
+        .chart-container {
+            position: relative;
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: auto;
+        }
+        button {
+            background: rgba(125, 211, 252, 0.1);
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: var(--accent-cyan);
+            color: var(--bg-color);
+            box-shadow: 0 0 15px var(--accent-cyan);
+        }
+        button.action-lime {
+            border-color: var(--accent-lime);
+            color: var(--accent-lime);
+            background: rgba(212, 255, 143, 0.1);
+        }
+        button.action-lime:hover {
+            background: var(--accent-lime);
+            color: var(--bg-color);
+            box-shadow: 0 0 15px var(--accent-lime);
+        }
+    </style>
 </head>
 <body>
-<div id="app">
 
-  <!-- ═══════ TOPBAR ═══════ -->
-  <header class="topbar">
-    <div class="topbar-logo">V</div>
-    <div class="topbar-info">
-      <div class="topbar-title">VOSTOK NEXUS PREMIUM</div>
-      <div class="topbar-sub" id="gps-coords">54.7842°N 56.0342°E · GPS 8sat</div>
-    </div>
-    <div class="topbar-right">
-      <div class="status-badge live"><span class="status-dot"></span>LIVE</div>
-      <div class="batt" id="batt-pct">⚡74%</div>
-    </div>
-  </header>
-
-  <!-- ═══════ AI TICKER ═══════ -->
-  <div class="ai-ticker">
-    <div class="ticker-track">
-      <span class="ticker-text">
-        Давление стабильно 1013 hPa — высокая вероятность клёва
-        <span class="ticker-sep">●</span>
-        Луна убывающая 68% — пик активности 22:00–04:00
-        <span class="ticker-sep">●</span>
-        Температура воды 14.2°С идеальна для щуки
-        <span class="ticker-sep">●</span>
-        Золотой час: 05:24–06:45
-        <span class="ticker-sep">●</span>
-        Давление стабильно 1013 hPa — высокая вероятность клёва
-      </span>
-    </div>
-  </div>
-
-  <!-- ═══════ CONTENT ═══════ -->
-  <div class="content" id="mainContent">
-
-    <!-- ────── DASHBOARD ────── -->
-    <div id="view-dashboard" class="view active">
-      <div class="view-header">
-        <div>
-          <div class="view-title">Dashboard</div>
-          <div class="view-sub" id="dash-time">Полевой комплекс · 08:14</div>
+    <header class="header">
+        <div style="display: flex; flex-direction: column;">
+            <span style="font-weight: 800; font-size: 20px; letter-spacing: 1px; color: #fff;">VOSTOK <span style="color: var(--accent-lime);">NEXUS</span></span>
+            <span style="font-size: 12px; color: #9ca3af;">Метеорологическая Edge AI Система v5.1</span>
         </div>
-        <button class="btn sm" onclick="syncData()">↻ Sync</button>
-      </div>
-
-      <!-- AI Predictor -->
-      <div class="card card-lime">
-        <div class="card-hdr">
-          <span class="card-icon">🤖</span>
-          <span class="card-title">AI Predictor клёва</span>
-          <span class="card-badge badge-ai">EDGE AI</span>
+        <div id="ws-status" class="status-badge">
+            <div class="status-dot"></div>
+            <span id="status-text">OFFLINE</span>
         </div>
-        <div class="predictor-wrap">
-          <div class="predictor-svg">
-            <svg viewBox="0 0 180 180">
-              <circle cx="90" cy="90" r="74" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="12" stroke-linecap="round"/>
-              <circle cx="90" cy="90" r="74" fill="none" stroke="rgba(212,255,143,.1)" stroke-width="20" stroke-linecap="round"/>
-              <circle id="gaugeRing" cx="90" cy="90" r="74" fill="none" stroke="url(#gaugeGrad)"
-                stroke-width="12" stroke-linecap="round"
-                stroke-dasharray="465" stroke-dashoffset="102"
-                transform="rotate(-90 90 90)" class="predictor-ring"/>
-              <defs>
-                <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%"   stop-color="#7dd3fc"/>
-                  <stop offset="60%"  stop-color="#d4ff8f"/>
-                  <stop offset="100%" stop-color="#4ade80"/>
-                </linearGradient>
-              </defs>
-            </svg>
-            <div class="predictor-center">
-              <div class="predictor-pct" id="pred-pct">78</div>
-              <div class="predictor-label">% клёва</div>
+    </header>
+
+    <main class="dashboard-grid">
+        
+        <section class="panel">
+            <h2>Телеметрия & ИИ Анализ</h2>
+            <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #9ca3af;">Статус ИИ-Предиктора:</span>
+                    <span style="color: var(--accent-lime); font-weight: bold;">Активен (Локальный эмбеддинг)</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #9ca3af;">Аномалии давления:</span>
+                    <span id="anomaly-value" style="font-family: monospace;">Стабильно</span>
+                </div>
             </div>
-          </div>
-          <div class="predictor-factors">
-            <div class="factor-row">
-              <div class="factor-dot" style="background:var(--lime);color:var(--lime)"></div>
-              <div class="factor-lbl">Давление стабильно</div>
-              <div class="factor-val text-lime">+18</div>
+            <div class="btn-group">
+                <button class="action-lime" onclick="sendMessage('calibrate')">Калибровка ИИ</button>
+                <button onclick="sendMessage('reset_logger')">Сброс лога</button>
             </div>
-            <div class="factor-row">
-              <div class="factor-dot" style="background:var(--orange);color:var(--orange)"></div>
-              <div class="factor-lbl">Луна убывающая 68%</div>
-              <div class="factor-val text-orange">+12</div>
+        </section>
+
+        <section class="panel">
+            <h2>Атмосферный Профиль</h2>
+            <div class="chart-container">
+                <canvas id="weatherChart"></canvas>
             </div>
-            <div class="factor-row">
-              <div class="factor-dot" style="background:var(--cyan);color:var(--cyan)"></div>
-              <div class="factor-lbl">T воды 14.2°С</div>
-              <div class="factor-val text-cyan">+22</div>
-            </div>
-            <div class="factor-row">
-              <div class="factor-dot" style="background:#a5b4fc;color:#a5b4fc"></div>
-              <div class="factor-lbl">Рассвет 05:24</div>
-              <div class="factor-val" style="color:#a5b4fc">+26</div>
-            </div>
-          </div>
-        </div>
-      </div>
+        </section>
 
-      <!-- Rods -->
-      <div class="g2">
-        <div class="rod-card bite" onclick="rodClicked(1)">
-          <div class="rod-top">
-            <div class="rod-led bite"></div>
-            <div class="rod-name">Удочка #1</div>
-            <div class="rod-status bite">🔴 Поклёвка!</div>
-          </div>
-          <div class="rod-data">
-            <div class="rod-datum">Вода<b id="r1-temp">14.2°C</b></div>
-            <div class="rod-datum">Вибр<b id="r1-vib">2.4g</b></div>
-            <div class="rod-datum">RSSI<b>−61dBm</b></div>
-            <div class="rod-datum">Hall<b>🟢 Act</b></div>
-          </div>
-          <div class="vibe-bar"><div class="vibe-fill high" id="r1-bar" style="width:80%"></div></div>
-        </div>
+        <section class="panel">
+            <h2>Геопозиция Базы & Эхолокация</h2>
+            <div id="map"></div>
+        </section>
 
-        <div class="rod-card" onclick="rodClicked(2)">
-          <div class="rod-top">
-            <div class="rod-led ok"></div>
-            <div class="rod-name">Удочка #2</div>
-            <div class="rod-status ok">✓ OK</div>
-          </div>
-          <div class="rod-data">
-            <div class="rod-datum">Вода<b id="r2-temp">13.8°C</b></div>
-            <div class="rod-datum">Вибр<b id="r2-vib">0.1g</b></div>
-            <div class="rod-datum">RSSI<b>−55dBm</b></div>
-            <div class="rod-datum">Hall<b>⚫ —</b></div>
-          </div>
-          <div class="vibe-bar"><div class="vibe-fill" id="r2-bar" style="width:4%"></div></div>
-        </div>
-      </div>
+    </main>
 
-      <!-- Meteo quick -->
-      <div class="card">
-        <div class="card-hdr">
-          <span class="card-icon">🌡</span>
-          <span class="card-title">Метеорология</span>
-          <span class="card-badge badge-meteo">BME280</span>
-        </div>
-        <div class="g3">
-          <div class="metric">
-            <div class="metric-lbl">Давление QNH</div>
-            <div class="metric-val" id="m-qnh">1013</div>
-            <div class="metric-sub">hPa</div>
-          </div>
-          <div class="metric">
-            <div class="metric-lbl">Температура</div>
-            <div class="metric-val lime" id="m-temp">+18.4°</div>
-            <div class="metric-sub">воздух</div>
-          </div>
-          <div class="metric">
-            <div class="metric-lbl">Влажность</div>
-            <div class="metric-val" id="m-rh">84%</div>
-            <div class="metric-sub">у воды</div>
-          </div>
-        </div>
-      </div>
+    <script src="chart.js"></script>
+    <script src="leaflet.js"></script>
+    
+    <script src="script.js"></script>
 
-      <!-- Actions -->
-      <div class="card">
-        <div class="card-hdr">
-          <span class="card-icon">⚡</span>
-          <span class="card-title">Действия</span>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;position:relative;z-index:1">
-          <button class="btn primary" onclick="switchView('fishing');showToast('📔 Открыт дневник')">🎣 Записать улов</button>
-          <button class="btn" onclick="switchView('meteo');showToast('☁ Открыта метеорология')">☁ Метео</button>
-          <button class="btn" onclick="showToast('📍 GPS сохранена')">📍 Точка</button>
-        </div>
-      </div>
+    <script>
+        // Интеграция WebSocket статуса напрямую в разметку для стабильности работы системы
+        const statusBadge = document.getElementById('ws-status');
+        const statusText = document.getElementById('status-text');
 
-      <!-- GPS / Battery -->
-      <div class="g2">
-        <div class="metric">
-          <div class="metric-lbl">🛰 GPS</div>
-          <div style="font-size:13px;font-family:var(--font-mono);color:var(--lime);line-height:1.5">54.7842°N<br>56.0342°E</div>
-          <div class="metric-sub">8sat · HDOP 1.2</div>
-        </div>
-        <div class="metric">
-          <div class="metric-lbl">⚙ ESP32-S3</div>
-          <div class="metric-val lime" style="font-size:18px">74%</div>
-          <div class="metric-sub">АКБ · CPU 43%</div>
-        </div>
-      </div>
-    </div><!-- /dashboard -->
+        function updateWebSocketStatus(connected) {
+            if (connected) {
+                statusBadge.classList.add('connected');
+                statusText.innerText = 'ONLINE / CONNECTED';
+            } else {
+                statusBadge.classList.remove('connected');
+                statusText.innerText = 'OFFLINE / DISCONNECTED';
+            }
+        }
 
-    <!-- ────── МЕТЕОРОЛОГИЯ ────── -->
-    <div id="view-meteo" class="view">
-      <div class="view-header">
-        <div>
-          <div class="view-title">Метеорология</div>
-          <div class="view-sub">0–10000м · BME280 + Open-Meteo</div>
-        </div>
-      </div>
-
-      <div class="g3">
-        <div class="metric">
-          <div class="metric-lbl">QNH</div>
-          <div class="metric-val" style="font-size:18px;color:#a5b4fc">1013</div>
-          <div class="metric-sub">+14.8 коррекция</div>
-        </div>
-        <div class="metric">
-          <div class="metric-lbl">Точка росы</div>
-          <div class="metric-val" style="font-size:18px">14.2°</div>
-          <div class="metric-sub">расчёт Магнуса</div>
-        </div>
-        <div class="metric">
-          <div class="metric-lbl">QFE</div>
-          <div class="metric-val" style="font-size:18px;color:var(--cyan)">998</div>
-          <div class="metric-sub">120м AMSL</div>
-        </div>
-      </div>
-
-      <div class="atmo-shell">
-        <div class="atmo-controls">
-          <div class="seg-btns" id="modeBtns">
-            <button class="seg-btn active" onclick="switchAtmoMode('table',this)">Таблица</button>
-            <button class="seg-btn" onclick="switchAtmoMode('graph',this)">График</button>
-          </div>
-          <div class="seg-btns" id="layerBtns" style="display:none">
-            <button class="seg-btn active" onclick="switchLayer('mix',this)">Mix</button>
-            <button class="seg-btn" onclick="switchLayer('wind',this)">Ветер</button>
-            <button class="seg-btn" onclick="switchLayer('cloud',this)">Облака</button>
-            <button class="seg-btn" onclick="switchLayer('temp',this)">Темп</button>
-          </div>
-          <button class="dir-toggle-btn" id="dirToggleBtn" onclick="toggleWindDir()">+180° куда дует</button>
-        </div>
-
-        <div id="atmoTableView">
-          <div class="table-scroll">
-            <table class="atmo-table">
-              <thead>
-                <tr>
-                  <th>Высота</th><th>T°C</th><th>RH%</th>
-                  <th>P hPa</th><th>Ветер м/с</th>
-                  <th>Направление</th><th>Облачность</th><th>Тип</th>
-                </tr>
-              </thead>
-              <tbody id="atmoTbody"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <div id="atmoGraphView" style="display:none">
-          <div class="atmo-canvas-wrap">
-            <canvas id="atmoCanvas" width="800" height="260"></canvas>
-            <div class="canvas-legend">
-              <div class="legend-item"><div class="legend-dot" style="background:var(--lime)"></div>Ветер</div>
-              <div class="legend-item"><div class="legend-dot" style="background:var(--cyan)"></div>Облака</div>
-              <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div>Темп</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div><!-- /meteo -->
-
-    <!-- ────── РЫБАЛКА ────── -->
-    <div id="view-fishing" class="view">
-      <div class="view-header">
-        <div>
-          <div class="view-title">Рыбалка</div>
-          <div class="view-sub">Дневник · AI Fish ID · Таймлайн</div>
-        </div>
-      </div>
-
-      <div class="insight">
-        <div class="insight-icon">🎯</div>
-        <div>
-          <div class="insight-title">AI Рекомендация</div>
-          <div class="insight-text">Глубина 1.5–2.5м точка B4 · Лучшие 05:30–06:45 · Колебалка 18г</div>
-        </div>
-      </div>
-
-      <!-- Timeline -->
-      <div class="card">
-        <div class="card-hdr">
-          <span class="card-icon">⏱</span>
-          <span class="card-title">Таймлайн поклёвок</span>
-          <span class="card-badge badge-fishing" id="timeline-count">3 события</span>
-        </div>
-        <div class="bite-timeline" id="bite-timeline">
-          <div class="bite-entry">
-            <div class="bite-dot active"></div>
-            <div class="bite-body">
-              <div class="bite-title text-lime">🎣 ПОКЛЁВКА</div>
-              <div class="bite-meta">08:14:23 · вибрация 2.4g · T 14.2°C</div>
-            </div>
-          </div>
-          <div class="bite-entry">
-            <div class="bite-dot past"></div>
-            <div class="bite-body">
-              <div class="bite-title">Поклёвка — Удочка #2</div>
-              <div class="bite-meta">07:42:11 · вибрация 1.8g · T 14.0°C</div>
-            </div>
-          </div>
-          <div class="bite-entry">
-            <div class="bite-dot past"></div>
-            <div class="bite-body">
-              <div class="bite-title">✅ Улов — Щука 1.8 кг</div>
-              <div class="bite-meta">06:15:07 · Колебалка lime 18г</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Catch form -->
-      <div class="card">
-        <div class="card-hdr">
-          <span class="card-icon">➕</span>
-          <span class="card-title">Записать улов</span>
-        </div>
-        <div class="catch-form">
-          <div>
-            <div class="field-lbl">Вид рыбы</div>
-            <input type="text" class="field-input" placeholder="Щука, окунь..." id="in-fish" oninput="validateFish()">
-          </div>
-          <div class="g2">
-            <div>
-              <div class="field-lbl">Вес (кг)</div>
-              <input type="number" class="field-input" placeholder="1.80" step="0.01" id="in-weight" oninput="validateWeight()">
-              <div id="val-weight" class="val-msg"></div>
-            </div>
-            <div>
-              <div class="field-lbl">Длина (см)</div>
-              <input type="number" class="field-input" placeholder="52" id="in-length" oninput="validateLength()">
-              <div id="val-length" class="val-msg"></div>
-            </div>
-          </div>
-          <div>
-            <div class="field-lbl">Приманка</div>
-            <input type="text" class="field-input" placeholder="Колебалка..." id="in-bait">
-          </div>
-          <button class="btn-fish-id" onclick="openFishIDModal()">📸 Определить рыбу по фото</button>
-          <button class="btn primary" onclick="saveCatch()" style="width:100%">💾 Сохранить улов</button>
-        </div>
-      </div>
-
-      <!-- Journal -->
-      <div class="card">
-        <div class="card-hdr">
-          <span class="card-icon">📔</span>
-          <span class="card-title">Дневник улова</span>
-          <span class="card-badge badge-fishing" id="catch-count">0 записей</span>
-        </div>
-        <div style="position:relative;z-index:1;margin-bottom:10px">
-          <button class="export-btn" onclick="exportCatches()">📥 Экспорт CSV</button>
-        </div>
-        <div id="catch-journal"></div>
-      </div>
-    </div><!-- /fishing -->
-
-    <!-- ────── КАРТА ────── -->
-    <div id="view-map" class="view">
-      <div class="view-header">
-        <div>
-          <div class="view-title">Карта</div>
-          <div class="view-sub">Батиметрия · GPS · Улов</div>
-        </div>
-      </div>
-      <div class="card" style="text-align:center;padding:48px 18px;background:linear-gradient(135deg,rgba(7,24,38,.7),rgba(12,32,53,.9))">
-        <div style="font-size:48px;margin-bottom:16px">🗺</div>
-        <div style="font-size:16px;font-weight:700;margin-bottom:8px">Карта батиметрии</div>
-        <div style="font-size:12px;color:var(--text-3);line-height:1.6;margin-bottom:16px">
-          Для работы карты необходим<br>Leaflet.js + CartoDB Dark Matter tiles<br>На ESP32 использует оффлайн-кэш
-        </div>
-        <div style="display:flex;gap:8px;justify-content:center">
-          <button class="btn" onclick="showToast('📍 Точка GPS сохранена')">📍 Добавить</button>
-          <button class="btn" onclick="showToast('📥 Экспорт GeoJSON')">📥 GeoJSON</button>
-        </div>
-      </div>
-    </div><!-- /map -->
-
-    <!-- ────── НАСТРОЙКИ ────── -->
-    <div id="view-settings" class="view">
-      <div class="view-header">
-        <div>
-          <div class="view-title">Настройки</div>
-          <div class="view-sub">NEXUS v5.1 ULTRA · ESP32-S3 N8R8</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-hdr"><span class="card-icon">🔌</span><span class="card-title">Подключение ESP32</span></div>
-        <div style="position:relative;z-index:1;font-size:12px;color:var(--text-2);line-height:1.8">
-          📶 WebSocket: ws://192.168.4.1/ws · <span style="color:var(--green)">ONLINE</span><br>
-          🌐 Open-Meteo API · Бесплатно<br>
-          📡 ESP-NOW Удочки · 2 устройства<br>
-          ⚡ Latency: 12мс
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-hdr"><span class="card-icon">🔧</span><span class="card-title">Калибровка датчиков</span></div>
-        <div style="position:relative;z-index:1;font-size:12px;color:var(--text-2);line-height:2">
-          🌡 BME280 высота: 120м<br>
-          📳 MPU-6050 чувствительность: 6/10<br>
-          🧲 Hall сенсор: 4/10<br>
-          🎙 GY-MAX9814 микрофон: 450Гц
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-hdr"><span class="card-icon">🚀</span><span class="card-title">Прошивка</span></div>
-        <div style="position:relative;z-index:1;font-size:12px;color:var(--text-2);line-height:2">
-          v5.1 ULTRA · ESP-IDF v5.1<br>
-          Build 2025.05 · OTA готов<br>
-          <button class="btn sm" onclick="showToast('⬇ Проверка обновлений...')" style="margin-top:8px">Проверить обновления</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-hdr"><span class="card-icon">💾</span><span class="card-title">Данные приложения</span></div>
-        <div style="position:relative;z-index:1;font-size:12px;color:var(--text-2);line-height:2">
-          Сохранённых уловов: <span id="data-stats">0</span><br>
-          Размер: <span id="data-size">~0 KB</span><br>
-          <button class="btn sm" onclick="clearAllData()" style="margin-top:8px;background:var(--red-dim);border-color:var(--red);color:var(--red)">🗑 Очистить всё</button>
-        </div>
-      </div>
-    </div><!-- /settings -->
-
-  </div><!-- /content -->
-
-  <!-- ═══════ MODAL: Fish ID ═══════ -->
-  <div id="fishIDModal" class="modal-overlay">
-    <div class="modal-content">
-      <button class="modal-close" onclick="closeFishIDModal()">✕</button>
-      <div class="modal-title">📸 AI Fish ID Scanner</div>
-
-      <div class="fish-id-scanner active" id="fishScanner" onclick="startScanFish()">
-        <div class="scanner-line"></div>
-        <div class="scanner-text">Сканируем...</div>
-        <div class="scanner-sub">Поместите рыбу и монету в кадр</div>
-      </div>
-
-      <div class="fish-result" id="fishResult">
-        <div class="fish-result-name"  id="fishResultName">Щука обыкновенная</div>
-        <div class="fish-result-weight" id="fishResultWeight">~1.8 кг</div>
-        <div class="fish-result-confidence" id="fishResultConf">Уверенность: 94%</div>
-        <div class="fish-result-meta" id="fishResultMeta">По размеру относительно монеты (d=24.26mm). Характер чешуи подтверждает вид.</div>
-      </div>
-
-      <button class="btn primary" onclick="confirmFishResult()" style="width:100%;margin-bottom:12px">✓ Применить результат</button>
-      <button class="btn" onclick="startScanFish()" style="width:100%">🔄 Сканировать снова</button>
-    </div>
-  </div>
-
-  <!-- ═══════ BOTTOM NAV ═══════ -->
-  <nav class="bottom-nav">
-    <button class="nav-btn active" onclick="switchView('dashboard')">
-      <span class="nav-icon">📊</span>Dashboard
-    </button>
-    <button class="nav-btn" onclick="switchView('meteo')">
-      <span class="nav-icon">☁</span>Метео
-    </button>
-    <button class="nav-btn" onclick="switchView('fishing')">
-      <span class="nav-icon">🎣</span>Рыбалка
-    </button>
-    <button class="nav-btn" onclick="switchView('map')">
-      <span class="nav-icon">🗺</span>Карта
-    </button>
-    <button class="nav-btn" onclick="switchView('settings')">
-      <span class="nav-icon">⚙</span>Настройки
-    </button>
-  </nav>
-
-</div><!-- /app -->
-
-<div class="toast" id="toast"></div>
-
-<!-- Script -->
-<script src="script.js"></script>
+        // Функция отправки отладочных команд на ESP32 через WebSocket
+        function sendMessage(command) {
+            if (window.wsClient && window.wsClient.readyState === WebSocket.OPEN) {
+                window.wsClient.send(JSON.stringify({ action: command, timestamp: Date.now() }));
+                console.log("Команда отправлена на Базу:", command);
+            } else {
+                alert("Нет связи с базовой станцией!");
+            }
+        }
+    </script>
 </body>
 </html>
