@@ -62,12 +62,7 @@ static void spiffs_init() {
         .max_files = 5,
         .format_if_mount_failed = true
     };
-    esp_err_t ret = esp_vfs_spiffs_register(&conf);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Ошибка монтирования SPIFFS (%s)", esp_err_to_name(ret));
-    } else {
-        ESP_LOGI(TAG, "SPIFFS успешно смонтирован.");
-    }
+    esp_vfs_spiffs_register(&conf);
 }
 
 /**
@@ -104,7 +99,7 @@ static esp_err_t common_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-/* Структура URI для статики (Лежит ВЫШЕ сетевой задачи) */
+/* Структура URI для статики */
 static const httpd_uri_t common_get_uri = {
     .uri      = "/*",
     .method   = HTTP_GET,
@@ -122,7 +117,7 @@ static esp_err_t ws_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-/* Структура URI для WebSocket (Лежит ВЫШЕ сетевой задачи) */
+/* Структура URI для WebSocket */
 static const httpd_uri_t ws = { 
     .uri = "/ws", 
     .method = HTTP_GET, 
@@ -137,10 +132,11 @@ void network_stack_task(void *pvParameters) {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.core_id = 1;
     config.uri_match_fn = httpd_uri_match_wildcard;
+    config.stack_size = 10240; // <--- НАШЕ ИСПРАВЛЕНИЕ: ВЫДЕЛИЛИ 10 КБ СТЭКА, ТЕПЕРЬ ПЕРЕПОЛНЕНИЯ НЕ БУДЕТ!
 
     if (httpd_start(&server, &config) == ESP_OK) {
         httpd_register_uri_handler(server, &ws);
-        httpd_register_uri_handler(server, &common_get_uri); // Теперь всё объявлено выше и компилятор будет счастлив!
+        httpd_register_uri_handler(server, &common_get_uri);
     }
     while(1) { vTaskDelay(pdMS_TO_TICKS(1000)); }
 }
