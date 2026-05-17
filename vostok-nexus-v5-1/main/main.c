@@ -50,6 +50,17 @@ static void peripherals_init() {
     uart_param_config(UART_NUM_1, &uart_config);
     uart_set_pin(UART_NUM_1, PIN_GPS_TX, PIN_GPS_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     uart_driver_install(UART_NUM_1, 1024, 0, 0, NULL, 0);
+
+    /* Настройка кнопок на вход с подтяжкой к питанию */
+    gpio_config_t btn_conf = {
+        .pin_bit_mask = (1ULL << PIN_BUTTON_1) | (1ULL << PIN_BUTTON_2),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    gpio_config(&btn_conf);
+
 }
 
 /**
@@ -221,6 +232,54 @@ void gps_task(void *pvParameters) {
     }
 }
 
+
+/**
+ * @brief Задача опроса кнопок с программным антидребезгом
+ */
+void base_buttons_task(void *pvParameters) {
+    int btn1_state = 1;
+    int btn2_state = 1;
+    int last_btn1_state = 1;
+    int last_btn2_state = 1;
+
+    while (1) {
+        int current_btn1 = gpio_get_level(PIN_BUTTON_1);
+        int current_btn2 = gpio_get_level(PIN_BUTTON_2);
+
+        /* Проверка кнопки 1 */
+        if (current_btn1 != last_btn1_state) {
+            vTaskDelay(pdMS_TO_TICKS(50)); /* Антидребезг */
+            current_btn1 = gpio_get_level(PIN_BUTTON_1);
+            if (current_btn1 != last_btn1_state) {
+                if (current_btn1 == 0) { /* Нажатие (переход с 1 на 0) */
+                    log_msg_t msg;
+                    snprintf(msg.data, sizeof(msg.data), "BUTTON 1 PRESSED");
+                    xQueueSend(log_queue, &msg, 0);
+                    ESP_LOGI(TAG, "BUTTON 1 PRESSED");
+                }
+                last_btn1_state = current_btn1;
+            }
+        }
+
+        /* Проверка кнопки 2 */
+        if (current_btn2 != last_btn2_state) {
+            vTaskDelay(pdMS_TO_TICKS(50)); /* Антидребезг */
+            current_btn2 = gpio_get_level(PIN_BUTTON_2);
+            if (current_btn2 != last_btn2_state) {
+                if (current_btn2 == 0) { /* Нажатие (переход с 1 на 0) */
+                    log_msg_t msg;
+                    snprintf(msg.data, sizeof(msg.data), "BUTTON 2 PRESSED");
+                    xQueueSend(log_queue, &msg, 0);
+                    ESP_LOGI(TAG, "BUTTON 2 PRESSED");
+                }
+                last_btn2_state = current_btn2;
+            }
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+}
+
 void app_main(void) {
     /* Инициализация NVS, SPIFFS и Периферии */
     nvs_init_storage();
@@ -246,6 +305,10 @@ void app_main(void) {
     /* Задача GPS на Ядро 0 */
     xTaskCreatePinnedToCore(gps_task, "gps_task", 4096, NULL, 3, NULL, 0);
 
+
+
+    /* Задача кнопок на Ядро 1 */
+    xTaskCreatePinnedToCore(base_buttons_task, "buttons_task", 4096, NULL, 3, NULL, 1);
 
     ESP_LOGI(TAG, "Система VOSTOK NEXUS v5.1 S3 ULTRA PREMIUM запущена.");
 }
