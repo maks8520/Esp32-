@@ -10,9 +10,9 @@
 #include "esp_netif.h"
 #include "esp_http_server.h"
 #include "esp_spiffs.h"
-#include "driver/sdspi_host.h"
-#include "driver/spi_common.h"
+#include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
+#include "driver/sdspi_host.h"
 #include "driver/i2c.h"
 #include "driver/uart.h"
 #include "driver/gpio.h"
@@ -25,8 +25,8 @@ static const char *TAG = "VOSTOK_BASE";
 httpd_handle_t server = NULL;
 int client_fd = -1;
 QueueHandle_t log_queue;
+sdmmc_card_t *card;
 
-// 4. wifi_event_handler
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data) {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
@@ -38,6 +38,48 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(TAG, "Successfully connected. Static IP: " IPSTR, IP2STR(&event->ip_info.ip));
     }
+}
+
+void sd_card_init() {
+    ESP_LOGI(TAG, "Initializing SD card...");
+
+    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+        .format_if_mount_failed = false,
+        .max_files = 5,
+        .allocation_unit_size = 16 * 1024
+    };
+
+    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+    spi_bus_config_t bus_cfg = {
+        .mosi_io_num = PIN_SD_MOSI,
+        .miso_io_num = PIN_SD_MISO,
+        .sclk_io_num = PIN_SD_CLK,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+        .max_transfer_sz = 4000,
+    };
+
+    esp_err_t ret = spi_bus_initialize(host.slot, &bus_cfg, SDSPI_DEFAULT_DMA);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize SPI bus.");
+        return;
+    }
+
+    sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
+    slot_config.gpio_cs = PIN_SD_CS;
+    slot_config.host_id = host.slot;
+
+    ret = esp_vfs_fat_sdspi_mount("/sdcard", &host, &slot_config, &mount_config, &card);
+
+    if (ret != ESP_OK) {
+        if (ret == ESP_FAIL) {
+            ESP_LOGE(TAG, "Failed to mount filesystem.");
+        } else {
+            ESP_LOGE(TAG, "Failed to initialize the card (%s).", esp_err_to_name(ret));
+        }
+        return;
+    }
+    ESP_LOGI(TAG, "SD Card mounted successfully at /sdcard");
 }
 
 static void peripherals_init() {
@@ -73,18 +115,6 @@ static void peripherals_init() {
       .format_if_mount_failed = true
     };
     esp_vfs_spiffs_register(&conf);
-
-    // SD SPI Init
-    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
-    spi_bus_config_t bus_cfg = {
-        .mosi_io_num = PIN_SD_MOSI,
-        .miso_io_num = PIN_SD_MISO,
-        .sclk_io_num = PIN_SD_CLK,
-        .quadwp_io_num = -1,
-        .quadhd_io_num = -1,
-        .max_transfer_sz = 4000,
-    };
-    spi_bus_initialize(host.slot, &bus_cfg, SDSPI_DEFAULT_DMA);
 }
 
 static esp_err_t ws_handler(httpd_req_t *req) {
@@ -98,10 +128,9 @@ static esp_err_t ws_handler(httpd_req_t *req) {
 
 static const httpd_uri_t ws = { .uri = "/ws", .method = HTTP_GET, .handler = ws_handler, .is_websocket = true };
 
-// 5. network_stack_task
 void network_stack_task(void *pvParameters) {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.stack_size = 10240; // Requirement: config.stack_size = 10240
+    config.stack_size = 10240;
     config.core_id = 1;
     if (httpd_start(&server, &config) == ESP_OK) {
         httpd_register_uri_handler(server, &ws);
@@ -109,11 +138,18 @@ void network_stack_task(void *pvParameters) {
     while(1) { vTaskDelay(pdMS_TO_TICKS(1000)); }
 }
 
-void sd_logging_task(void *pvParameters) {
+void sd_log_async_task(void *pvParameters) {
     log_msg_t msg;
     while (1) {
         if (xQueueReceive(log_queue, &msg, portMAX_DELAY)) {
-            ESP_LOGI("SD_LOG", "%s", msg.data);
+            FILE *f = fopen("/sdcard/vostok_v51.log", "a");
+            if (f == NULL) {
+                ESP_LOGE(TAG, "Failed to open log file for writing. SD card may be missing or unmounted.");
+                continue;
+            }
+            fprintf(f, "%s\n", msg.data);
+            fclose(f);
+            ESP_LOGI("SD_LOG", "Written to SD: %s", msg.data);
         }
     }
 }
@@ -121,14 +157,14 @@ void sd_logging_task(void *pvParameters) {
 void app_main(void) {
     nvs_init_storage();
     peripherals_init();
+    sd_card_init();
+
     log_queue = xQueueCreate(LOG_QUEUE_SIZE, sizeof(log_msg_t));
 
-    // 1. esp_netif_create_default_wifi_sta()
     esp_netif_init();
     esp_event_loop_create_default();
     esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
 
-    // 2. Stop DHCP client and set static IP parameters
     esp_netif_dhcpc_stop(sta_netif);
     esp_netif_ip_info_t ip_info;
     esp_netif_str_to_ip4("192.168.43.100", &ip_info.ip);
@@ -136,14 +172,12 @@ void app_main(void) {
     esp_netif_str_to_ip4("255.255.255.0", &ip_info.netmask);
     esp_netif_set_ip_info(sta_netif, &ip_info);
 
-    // Register event handlers
     esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, NULL);
     esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, NULL);
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     esp_wifi_init(&cfg);
 
-    // 3. Configure STA mode for SSID "MY_PHONE" and Password "12345678"
     wifi_config_t wifi_config = {
         .sta = {
             .ssid = "MY_PHONE",
@@ -157,9 +191,8 @@ void app_main(void) {
     espnow_init_base();
     esp_now_register_recv_cb(on_base_espnow_recv);
 
-    // network_stack_task initialization
     xTaskCreatePinnedToCore(network_stack_task, "net_stack_task", 10240, NULL, 5, NULL, 1);
-    xTaskCreatePinnedToCore(sd_logging_task, "log_task", 4096, NULL, 4, NULL, 1);
+    xTaskCreatePinnedToCore(sd_log_async_task, "sd_log_task", 4096, NULL, 4, NULL, 1);
 
     ESP_LOGI(TAG, "VOSTOK NEXUS v5.1 S3 STARTED (STA MODE, STATIC IP)");
 }
