@@ -17,19 +17,29 @@
 #include "nvs_handler.h"
 #include "esp_now_logic.h"
 #include "esp_spiffs.h"
-#include "esp_now.h" // Подключаем для работы моста удочек
+#include "esp_now.h"
 
-// ====================================================================
-// НАСТРОЙКА ТВОЕГО ТЕЛЕФОНА (МЕНЯЙ ДАННЫЕ В КАВЫЧКАХ ТУТ)
+// ТЕХНИЧЕСКИЕ ИНКЛУДЫ ДЛЯ ПОЧИНКИ МАКРОСА IP4_ADDR
+#include "esp_netif.h"
+#include "lwip/ip4_addr.h"
+
+// СБРАСЫВАЕМ СТАРЫЕ ЗНАЧЕНИЯ ИЗ CONFIG.H, ЧТОБЫ ИЗБЕЖАТЬ ВАРНИНГОВ
+#ifdef WIFI_SSID
+#undef WIFI_SSID
+#endif
+#ifdef WIFI_PASS
+#undef WIFI_PASS
+#endif
+
+// ТЕПЕРЬ ТВОИ РЕАЛЬНЫЕ ДАННЫЕ ПРОПИСАНЫ БЕЗ КОНФЛИКТОВ
 #define WIFI_SSID "POCO F3"
 #define WIFI_PASS "11111111"
-// ====================================================================
 
 // Настройки статического IP для Android (192.168.43.xxx). 
-// Если у тебя iPhone — замени адрес на 172, 20, 10, 100 и шлюз на 172, 20, 10, 1
 #define STATIC_IP_ADDR  192, 168, 43, 100
 #define STATIC_GW_ADDR  192, 168, 43, 1
 #define STATIC_NETMASK  255, 255, 255, 0
+
 
 static const char *TAG = "VOSTOK_MAIN";
 httpd_handle_t server = NULL;
