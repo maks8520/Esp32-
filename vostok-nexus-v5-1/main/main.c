@@ -18,12 +18,10 @@
 #include "esp_now_logic.h"
 #include "esp_spiffs.h"
 #include "esp_now.h"
-
-// ТЕХНИЧЕСКИЕ ИНКЛУДЫ ДЛЯ ПОЧИНКИ МАКРОСА IP4_ADDR
 #include "esp_netif.h"
 #include "lwip/ip4_addr.h"
 
-// СБРАСЫВАЕМ СТАРЫЕ ЗНАЧЕНИЯ ИЗ CONFIG.H, ЧТОБЫ ИЗБЕЖАТЬ ВАРНИНГОВ
+// ОЧИСТКА СТАРЫХ МАКРОСОВ ИЗ CONFIG.H ВО ИЗБЕЖАНИЕ КОНФЛИКТОВ
 #ifdef WIFI_SSID
 #undef WIFI_SSID
 #endif
@@ -31,15 +29,15 @@
 #undef WIFI_PASS
 #endif
 
-// ТЕПЕРЬ ТВОИ РЕАЛЬНЫЕ ДАННЫЕ ПРОПИСАНЫ БЕЗ КОНФЛИКТОВ
+// НАСТРОЙКА ТВОЕГО ТЕЛЕФОНА
 #define WIFI_SSID "POCO F3"
 #define WIFI_PASS "11111111"
 
-// Настройки статического IP для Android (192.168.43.xxx). 
-#define STATIC_IP_ADDR  192, 168, 43, 100
-#define STATIC_GW_ADDR  192, 168, 43, 1
-#define STATIC_NETMASK  255, 255, 255, 0
-
+// РАЗДЕЛЬНЫЕ ОКТЕТЫ ДЛЯ ИСПРАВЛЕНИЯ ОШИБКИ МАКРОСА IP4_ADDR
+#define IP_B1 192
+#define IP_B2 168
+#define IP_B3 43
+#define IP_B4 100
 
 static const char *TAG = "VOSTOK_MAIN";
 httpd_handle_t server = NULL;
@@ -47,7 +45,7 @@ int client_fd = -1;
 QueueHandle_t log_queue;
 
 /**
- * @brief Колбэк приема данных по ESP-NOW от удочек. Транслирует JSON прямо в WebSocket браузера.
+ * @brief Колбэк приема данных по ESP-NOW от удочек. Транслирует JSON прямо в WebSocket.
  */
 void on_base_espnow_recv(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) {
     if (client_fd >= 0 && server != NULL) {
@@ -61,7 +59,7 @@ void on_base_espnow_recv(const esp_now_recv_info_t *recv_info, const uint8_t *da
 }
 
 /**
- * @brief Обработчик событий Wi-Fi для контроля подключения к смартфону
+ * @brief Обработчик событий Wi-Fi
  */
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
@@ -79,7 +77,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
 }
 
 /**
- * @brief Инициализация периферии согласно спецификации
+ * @brief Инициализация периферии (I2C, UART, Кнопки)
  */
 static void peripherals_init() {
     /* I2C: SDA=4, SCL=5 */
@@ -106,21 +104,17 @@ static void peripherals_init() {
     uart_set_pin(UART_NUM_1, PIN_GPS_TX, PIN_GPS_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     uart_driver_install(UART_NUM_1, 1024, 0, 0, NULL, 0);
 
-    /* Настройка кнопок на вход с подтяжкой к питанию */
-    gpio_config_t btn_conf = {
-        .pin_bit_mask = (1ULL << PIN_BUTTON_1) | (1ULL << PIN_BUTTON_2),
+    /* Инициализация Кнопок управления: На вход с подтяжкой к 3.3V */
+    gpio_config_t io_conf = {
+        .intr_type = GPIO_INTR_DISABLE,
         .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pin_bit_mask = ((1ULL << PIN_BUTTON_1) | (1ULL << PIN_BUTTON_2)),
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE
+        .pull_up_en = GPIO_PULLUP_ENABLE
     };
-    gpio_config(&btn_conf);
-
+    gpio_config(&io_conf);
 }
 
-/**
- * @brief Инициализация файловой системы SPIFFS
- */
 static void spiffs_init() {
     esp_vfs_spiffs_conf_t conf = {
         .base_path = "/spiffs",
@@ -131,19 +125,13 @@ static void spiffs_init() {
     esp_vfs_spiffs_register(&conf);
 }
 
-/**
- * @brief Универсальный обработчик для отдачи статических файлов веб-интерфейса
- */
 static esp_err_t common_get_handler(httpd_req_t *req) {
     char filepath[1100]; 
     const char *uri = req->uri;
 
-    if (strcmp(uri, "/") == 0) {
-        uri = "/index.html";
-    }
+    if (strcmp(uri, "/") == 0) uri = "/index.html";
 
     snprintf(filepath, sizeof(filepath), "/spiffs%s", uri);
-
     FILE *f = fopen(filepath, "r");
     if (f == NULL) {
         httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Файл не найден");
@@ -165,16 +153,8 @@ static esp_err_t common_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-/* Структура URI для статики */
-static const httpd_uri_t common_get_uri = {
-    .uri      = "/*",
-    .method   = HTTP_GET,
-    .handler  = common_get_handler
-};
+static const httpd_uri_t common_get_uri = { .uri = "/*", .method = HTTP_GET, .handler = common_get_handler };
 
-/**
- * @brief Обработчик WebSocket соединений
- */
 static esp_err_t ws_handler(httpd_req_t *req) {
     if (req->method == HTTP_GET) {
         client_fd = httpd_req_to_sockfd(req);
@@ -183,13 +163,7 @@ static esp_err_t ws_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-/* Структура URI для WebSocket */
-static const httpd_uri_t ws = { 
-    .uri = "/ws", 
-    .method = HTTP_GET, 
-    .handler = ws_handler, 
-    .is_websocket = true 
-};
+static const httpd_uri_t ws = { .uri = "/ws", .method = HTTP_GET, .handler = ws_handler, .is_websocket = true };
 
 /**
  * @brief Сетевая задача (Ядро 1)
@@ -198,7 +172,7 @@ void network_stack_task(void *pvParameters) {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.core_id = 1;
     config.uri_match_fn = httpd_uri_match_wildcard;
-    config.stack_size = 10240; // Избегаем переполнения стэка при работе с JSON/Вебсокетами
+    config.stack_size = 10240; 
 
     if (httpd_start(&server, &config) == ESP_OK) {
         httpd_register_uri_handler(server, &ws);
@@ -227,14 +201,12 @@ void gps_task(void *pvParameters) {
                                     &lat_raw, &lat_dir, &lon_raw, &lon_dir, &fix_quality, &satellites);
                 
                 if (parsed >= 6 && fix_quality > 0) {
-                    // Перевод координат NMEA в десятичные градусы (DD.DDDD)
                     float latitude = (int)(lat_raw / 100) + ((lat_raw - ((int)(lat_raw / 100) * 100)) / 60.0);
                     if (lat_dir == 'S') latitude = -latitude;
 
                     float longitude = (int)(lon_raw / 100) + ((lon_raw - ((int)(lon_raw / 100) * 100)) / 60.0);
                     if (lon_dir == 'W') longitude = -longitude;
 
-                    // Отправка пакета в браузер по WebSocket
                     if (client_fd >= 0) {
                         char json_payload[128];
                         snprintf(json_payload, sizeof(json_payload), 
@@ -252,157 +224,63 @@ void gps_task(void *pvParameters) {
 }
 
 /**
+ * @brief Задача циклического опроса аппаратных кнопок Базы (Ядро 1)
+ */
+void base_buttons_task(void *pvParameters) {
+    while (1) {
+        // Опрос Кнопки 1 (Зажатие к земле = нажата)
+        if (gpio_get_level(PIN_BUTTON_1) == 0) {
+            vTaskDelay(pdMS_TO_TICKS(50)); // Антидребезг
+            if (gpio_get_level(PIN_BUTTON_1) == 0) {
+                ESP_LOGI(TAG, "АКТИВАЦИЯ: Нажата аппаратная кнопка 1");
+                while (gpio_get_level(PIN_BUTTON_1) == 0) { vTaskDelay(pdMS_TO_TICKS(10)); } // Ожидание отпускания
+            }
+        }
+        // Опрос Кнопки 2
+        if (gpio_get_level(PIN_BUTTON_2) == 0) {
+            vTaskDelay(pdMS_TO_TICKS(50));
+            if (gpio_get_level(PIN_BUTTON_2) == 0) {
+                ESP_LOGI(TAG, "АКТИВАЦИЯ: Нажата аппаратная кнопка 2");
+                while (gpio_get_level(PIN_BUTTON_2) == 0) { vTaskDelay(pdMS_TO_TICKS(10)); }
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+}
+
+/**
  * @brief Неблокирующее логирование (Ядро 1)
  */
 void sd_log_async_task(void *pvParameters) {
     log_msg_t msg;
     while (1) {
         if (xQueueReceive(log_queue, &msg, portMAX_DELAY)) {
-            /* Заглушка для записи на SD через SPI (Pins 10,11,12,13) */
             ESP_LOGD(TAG, "Log: %s", msg.data);
         }
     }
 }
 
-
-/**
- * @brief Задача для чтения и парсинга NMEA логов с GPS модуля
- */
-void gps_task(void *pvParameters) {
-    uint8_t data[256];
-    char line[256];
-    int line_len = 0;
-
-    while (1) {
-        int rx_bytes = uart_read_bytes(UART_NUM_1, data, sizeof(data) - 1, pdMS_TO_TICKS(100));
-        if (rx_bytes > 0) {
-            for (int i = 0; i < rx_bytes; i++) {
-                if (data[i] == '\n' || data[i] == '\r') {
-                    if (line_len > 0) {
-                        line[line_len] = '\0';
-
-                        /* Поиск строки $GPGGA */
-                        if (strncmp(line, "$GPGGA", 6) == 0) {
-                            float raw_lat, raw_lon;
-                            char lat_dir, lon_dir;
-                            int fix_quality, satellites;
-
-                            /* Парсинг $GPGGA: $GPGGA,time,lat,N/S,lon,E/W,fix,satellites,... */
-                            if (sscanf(line, "$GPGGA,%*f,%f,%c,%f,%c,%d,%d", &raw_lat, &lat_dir, &raw_lon, &lon_dir, &fix_quality, &satellites) == 6) {
-                                if (fix_quality > 0) {
-                                    /* Перенос координат из DDMM.MMMM в Decimal Degrees */
-                                    int lat_deg = (int)(raw_lat / 100);
-                                    float lat_min = raw_lat - (lat_deg * 100);
-                                    float lat_dd = lat_deg + (lat_min / 60.0f);
-                                    if (lat_dir == 'S') lat_dd = -lat_dd;
-
-                                    int lon_deg = (int)(raw_lon / 100);
-                                    float lon_min = raw_lon - (lon_deg * 100);
-                                    float lon_dd = lon_deg + (lon_min / 60.0f);
-                                    if (lon_dir == 'W') lon_dd = -lon_dd;
-
-                                    /* Формирование JSON строки */
-                                    char json_str[128];
-                                    snprintf(json_str, sizeof(json_str), "{\"gps\": {\"lat\": %.6f, \"lon\": %.6f, \"satellites\": %d}}", lat_dd, lon_dd, satellites);
-
-                                    /* Асинхронная отправка JSON в активный WebSocket-клиент */
-                                    if (client_fd >= 0) {
-                                        httpd_ws_frame_t ws_pkt;
-                                        memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
-                                        ws_pkt.payload = (uint8_t*)json_str;
-                                        ws_pkt.len = strlen(json_str);
-                                        ws_pkt.type = HTTPD_WS_TYPE_TEXT;
-
-                                        httpd_ws_send_frame_async(server, client_fd, &ws_pkt);
-                                    }
-                                }
-                            }
-                        }
-                        line_len = 0;
-                    }
-                } else {
-                    if (line_len < sizeof(line) - 1) {
-                        line[line_len++] = (char)data[i];
-                    }
-                }
-            }
-        }
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
-}
-
-
-/**
- * @brief Задача опроса кнопок с программным антидребезгом
- */
-void base_buttons_task(void *pvParameters) {
-    int btn1_state = 1;
-    int btn2_state = 1;
-    int last_btn1_state = 1;
-    int last_btn2_state = 1;
-
-    while (1) {
-        int current_btn1 = gpio_get_level(PIN_BUTTON_1);
-        int current_btn2 = gpio_get_level(PIN_BUTTON_2);
-
-        /* Проверка кнопки 1 */
-        if (current_btn1 != last_btn1_state) {
-            vTaskDelay(pdMS_TO_TICKS(50)); /* Антидребезг */
-            current_btn1 = gpio_get_level(PIN_BUTTON_1);
-            if (current_btn1 != last_btn1_state) {
-                if (current_btn1 == 0) { /* Нажатие (переход с 1 на 0) */
-                    log_msg_t msg;
-                    snprintf(msg.data, sizeof(msg.data), "BUTTON 1 PRESSED");
-                    xQueueSend(log_queue, &msg, 0);
-                    ESP_LOGI(TAG, "BUTTON 1 PRESSED");
-                }
-                last_btn1_state = current_btn1;
-            }
-        }
-
-        /* Проверка кнопки 2 */
-        if (current_btn2 != last_btn2_state) {
-            vTaskDelay(pdMS_TO_TICKS(50)); /* Антидребезг */
-            current_btn2 = gpio_get_level(PIN_BUTTON_2);
-            if (current_btn2 != last_btn2_state) {
-                if (current_btn2 == 0) { /* Нажатие (переход с 1 на 0) */
-                    log_msg_t msg;
-                    snprintf(msg.data, sizeof(msg.data), "BUTTON 2 PRESSED");
-                    xQueueSend(log_queue, &msg, 0);
-                    ESP_LOGI(TAG, "BUTTON 2 PRESSED");
-                }
-                last_btn2_state = current_btn2;
-            }
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(50));
-    }
-}
-
 void app_main(void) {
-    /* Инициализация NVS, SPIFFS и Периферии */
     nvs_init_storage();
     spiffs_init();
     peripherals_init();
     log_queue = xQueueCreate(LOG_QUEUE_SIZE, sizeof(log_msg_t));
 
-    // Инициализация сетевых интерфейсов под режим Клиента (STA)
     esp_netif_init();
     esp_event_loop_create_default();
     esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
 
-    // Фиксация статического IP-адреса Базы в подсети смартфона
+    // БЕЗОПАСНАЯ И ПРАВИЛЬНАЯ ПООКТЕТНАЯ ПЕРЕДАЧА СТАТИЧЕСКОГО IP-АДРЕСА
     esp_netif_dhcpc_stop(sta_netif);
     esp_netif_ip_info_t ip_info;
-    IP4_ADDR(&ip_info.ip, STATIC_IP_ADDR);
-    IP4_ADDR(&ip_info.gw, STATIC_GW_ADDR);
-    IP4_ADDR(&ip_info.netmask, STATIC_NETMASK);
+    IP4_ADDR(&ip_info.ip, IP_B1, IP_B2, IP_B3, IP_B4);
+    IP4_ADDR(&ip_info.gw, IP_B1, IP_B2, IP_B3, 1);
+    IP4_ADDR(&ip_info.netmask, 255, 255, 255, 0);
     esp_netif_set_ip_info(sta_netif, &ip_info);
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     esp_wifi_init(&cfg);
 
-    // Регистрация обработчиков событий Wi-Fi
     esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, NULL);
     esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, NULL);
 
@@ -416,23 +294,14 @@ void app_main(void) {
     esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
     esp_wifi_start();
 
-    /* Инициализация базового уровня радиопротокола */
     espnow_init_base();
-    // Переопределяем встроенный колбэк на наш сквозной WebSocket-мост
     esp_now_register_recv_cb(on_base_espnow_recv);
 
-    /* Распределение задач по ядрам процессора */
+    /* Создание и распределение задач */
     xTaskCreatePinnedToCore(network_stack_task, "net_task", 4096, NULL, 5, NULL, 1);
     xTaskCreatePinnedToCore(sd_log_async_task, "log_task", 4096, NULL, 4, NULL, 1);
     xTaskCreatePinnedToCore(gps_task, "gps_task", 4096, NULL, 3, NULL, 0);
-
-    /* Задача GPS на Ядро 0 */
-    xTaskCreatePinnedToCore(gps_task, "gps_task", 4096, NULL, 3, NULL, 0);
-
-
-
-    /* Задача кнопок на Ядро 1 */
-    xTaskCreatePinnedToCore(base_buttons_task, "buttons_task", 4096, NULL, 3, NULL, 1);
+    xTaskCreatePinnedToCore(base_buttons_task, "btn_task", 3072, NULL, 3, NULL, 1);
 
     ESP_LOGI(TAG, "Система VOSTOK NEXUS v5.1 S3 ULTRA PREMIUM запущена.");
 }
