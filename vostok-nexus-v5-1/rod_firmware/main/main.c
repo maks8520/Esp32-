@@ -24,6 +24,11 @@ static const char *TAG = "ROD_HUNTER";
 #define MPU6050_ADDR                0x68
 #define PIN_HALL_SENSOR             3
 
+// RGB LED Configuration
+#define RED_PIN                     4
+#define GREEN_PIN                   5
+#define BLUE_PIN                    6
+
 // MPU6050 Registers
 #define MPU6050_PWR_MGMT_1          0x6B
 #define MPU6050_ACCEL_XOUT_H        0x3B
@@ -33,6 +38,13 @@ static uint8_t base_mac[6] = {0x28, 0x84, 0x85, 0x50, 0x79, 0x5D};
 static EventGroupHandle_t hopping_event_group;
 #define SEND_SUCCESS_BIT BIT0
 #define SEND_FAIL_BIT    BIT1
+
+// 2. LED Color Control
+void set_led_color(uint8_t r, uint8_t g, uint8_t b) {
+    gpio_set_level(RED_PIN, r);
+    gpio_set_level(GREEN_PIN, g);
+    gpio_set_level(BLUE_PIN, b);
+}
 
 // ESP-NOW Callbacks
 static void on_data_sent(const uint8_t *mac_addr, esp_now_send_status_t status) {
@@ -63,12 +75,14 @@ void save_channel_to_nvs(uint8_t channel) {
     }
 }
 
-// Channel Hopping logic
+// 3. Integrated LED Feedback in Channel Hopping logic
 void send_data_with_hopping(uint8_t *data, size_t len) {
     uint8_t channel = get_saved_channel();
     bool success = false;
 
     for (int attempt = 0; attempt < 14; attempt++) {
+        // Blinking Blue while scanning
+        set_led_color(0, 0, 1);
         esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
 
         esp_now_peer_info_t peer = {0};
@@ -86,14 +100,24 @@ void send_data_with_hopping(uint8_t *data, size_t len) {
         if (esp_now_send(base_mac, data, len) == ESP_OK) {
             EventBits_t bits = xEventGroupWaitBits(hopping_event_group, SEND_SUCCESS_BIT | SEND_FAIL_BIT, pdTRUE, pdFALSE, pdMS_TO_TICKS(50));
             if (bits & SEND_SUCCESS_BIT) {
+                // Success: Green for 500ms
+                set_led_color(0, 1, 0);
                 save_channel_to_nvs(channel);
+                vTaskDelay(pdMS_TO_TICKS(500));
+                set_led_color(0, 0, 0);
                 success = true;
                 break;
             }
         }
+        set_led_color(0, 0, 0); // Turn off between scans
         channel = (channel % 13) + 1;
     }
-    if (!success) ESP_LOGD(TAG, "Transmission failed");
+
+    if (!success) {
+        // Critical Error: Solid Red
+        set_led_color(1, 0, 0);
+        ESP_LOGD(TAG, "Transmission failed");
+    }
 }
 
 // Peripheral Initialization
@@ -113,30 +137,22 @@ static esp_err_t mpu6050_init() {
     return i2c_master_write_to_device(I2C_MASTER_NUM, MPU6050_ADDR, data, sizeof(data), pdMS_TO_TICKS(100));
 }
 
-// 1. & 3. Reading Sensors and Sending Data
 void sensor_task(void *pvParameters) {
     char json_buf[128];
     uint8_t raw_data[2];
     int16_t acc_x, acc_z;
 
     while (1) {
-        // Read Accel X
         uint8_t reg_x = MPU6050_ACCEL_XOUT_H;
         i2c_master_write_read_device(I2C_MASTER_NUM, MPU6050_ADDR, &reg_x, 1, raw_data, 2, pdMS_TO_TICKS(50));
         acc_x = (raw_data[0] << 8) | raw_data[1];
 
-        // Read Accel Z
         uint8_t reg_z = MPU6050_ACCEL_ZOUT_H;
         i2c_master_write_read_device(I2C_MASTER_NUM, MPU6050_ADDR, &reg_z, 1, raw_data, 2, pdMS_TO_TICKS(50));
         acc_z = (raw_data[0] << 8) | raw_data[1];
 
-        // 2. Read Hall Sensor
         int hall_state = gpio_get_level(PIN_HALL_SENSOR);
-
-        // 4. Format JSON
         snprintf(json_buf, sizeof(json_buf), "{\"telemetry\": {\"acc_x\": %d, \"acc_z\": %d, \"hall\": %d}}", acc_x, acc_z, hall_state);
-
-        // 5. Send data
         send_data_with_hopping((uint8_t *)json_buf, strlen(json_buf));
 
         vTaskDelay(pdMS_TO_TICKS(100));
@@ -151,7 +167,15 @@ void app_main(void) {
     }
     ESP_ERROR_CHECK(ret);
 
-    // WiFi Init
+    // 1. LED Pin Initialization
+    gpio_config_t led_cfg = {
+        .pin_bit_mask = (1ULL << RED_PIN) | (1ULL << GREEN_PIN) | (1ULL << BLUE_PIN),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+    };
+    gpio_config(&led_cfg);
+
     esp_netif_init();
     esp_event_loop_create_default();
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -159,12 +183,10 @@ void app_main(void) {
     esp_wifi_set_mode(WIFI_MODE_STA);
     esp_wifi_start();
 
-    // ESP-NOW Init
     hopping_event_group = xEventGroupCreate();
     ESP_ERROR_CHECK(esp_now_init());
     esp_now_register_send_cb(on_data_sent);
 
-    // Peripheral Init
     mpu6050_init();
     gpio_config_t hall_cfg = {
         .pin_bit_mask = (1ULL << PIN_HALL_SENSOR),
