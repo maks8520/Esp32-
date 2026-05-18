@@ -17,11 +17,56 @@
 #include "nvs_handler.h"
 #include "esp_now_logic.h"
 #include "esp_spiffs.h"
+#include "esp_now.h" // Подключаем для работы моста удочек
+
+// ====================================================================
+// НАСТРОЙКА ТВОЕГО ТЕЛЕФОНА (МЕНЯЙ ДАННЫЕ В КАВЫЧКАХ ТУТ)
+#define WIFI_SSID "POCO F3"
+#define WIFI_PASS "11111111"
+// ====================================================================
+
+// Настройки статического IP для Android (192.168.43.xxx). 
+// Если у тебя iPhone — замени адрес на 172, 20, 10, 100 и шлюз на 172, 20, 10, 1
+#define STATIC_IP_ADDR  192, 168, 43, 100
+#define STATIC_GW_ADDR  192, 168, 43, 1
+#define STATIC_NETMASK  255, 255, 255, 0
 
 static const char *TAG = "VOSTOK_MAIN";
 httpd_handle_t server = NULL;
 int client_fd = -1;
 QueueHandle_t log_queue;
+
+/**
+ * @brief Колбэк приема данных по ESP-NOW от удочек. Транслирует JSON прямо в WebSocket браузера.
+ */
+void on_base_espnow_recv(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) {
+    if (client_fd >= 0 && server != NULL) {
+        httpd_ws_frame_t ws_pkt = {
+            .payload = (uint8_t*)data,
+            .len = len,
+            .type = HTTPD_WS_TYPE_TEXT
+        };
+        httpd_ws_send_frame_async(server, client_fd, &ws_pkt);
+    }
+}
+
+/**
+ * @brief Обработчик событий Wi-Fi для контроля подключения к смартфону
+ */
+static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        esp_wifi_connect();
+        ESP_LOGI(TAG, "Поиск точки доступа смартфона %s...", WIFI_SSID);
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        esp_wifi_connect();
+        ESP_LOGW(TAG, "Связь потеряна. Автоматическое переподключение...");
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+        ESP_LOGI(TAG, "=================================================");
+        ESP_LOGI(TAG, "БАЗА В СЕТИ! ОТКРОЙ В БРАУЗЕРЕ СМАРТФОНА: " IPSTR, IP2STR(&event->ip_info.ip));
+        ESP_LOGI(TAG, "=================================================");
+    }
+}
 
 /**
  * @brief Инициализация периферии согласно спецификации
@@ -132,13 +177,57 @@ void network_stack_task(void *pvParameters) {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.core_id = 1;
     config.uri_match_fn = httpd_uri_match_wildcard;
-    config.stack_size = 10240; // <--- НАШЕ ИСПРАВЛЕНИЕ: ВЫДЕЛИЛИ 10 КБ СТЭКА, ТЕПЕРЬ ПЕРЕПОЛНЕНИЯ НЕ БУДЕТ!
+    config.stack_size = 10240; // Избегаем переполнения стэка при работе с JSON/Вебсокетами
 
     if (httpd_start(&server, &config) == ESP_OK) {
         httpd_register_uri_handler(server, &ws);
         httpd_register_uri_handler(server, &common_get_uri);
     }
     while(1) { vTaskDelay(pdMS_TO_TICKS(1000)); }
+}
+
+/**
+ * @brief Задача автоматического парсинга данных GPS NEO-7M (Ядро 0)
+ */
+void gps_task(void *pvParameters) {
+    uint8_t data[256];
+    char *line;
+    while (1) {
+        int len = uart_read_bytes(UART_NUM_1, data, sizeof(data) - 1, pdMS_TO_TICKS(1000));
+        if (len > 0) {
+            data[len] = '\0';
+            line = strstr((char *)data, "$GPGGA");
+            if (line) {
+                float lat_raw = 0, lon_raw = 0;
+                char lat_dir = 0, lon_dir = 0;
+                int fix_quality = 0, satellites = 0;
+                
+                int parsed = sscanf(line, "$GPGGA,%*f,%f,%c,%f,%c,%d,%d", 
+                                    &lat_raw, &lat_dir, &lon_raw, &lon_dir, &fix_quality, &satellites);
+                
+                if (parsed >= 6 && fix_quality > 0) {
+                    // Перевод координат NMEA в десятичные градусы (DD.DDDD)
+                    float latitude = (int)(lat_raw / 100) + ((lat_raw - ((int)(lat_raw / 100) * 100)) / 60.0);
+                    if (lat_dir == 'S') latitude = -latitude;
+
+                    float longitude = (int)(lon_raw / 100) + ((lon_raw - ((int)(lon_raw / 100) * 100)) / 60.0);
+                    if (lon_dir == 'W') longitude = -longitude;
+
+                    // Отправка пакета в браузер по WebSocket
+                    if (client_fd >= 0) {
+                        char json_payload[128];
+                        snprintf(json_payload, sizeof(json_payload), 
+                                 "{\"gps\": {\"lat\": %.6f, \"lon\": %.6f, \"satellites\": %d}}", 
+                                 latitude, longitude, satellites);
+                        
+                        httpd_ws_frame_t ws_pkt = { .payload = (uint8_t*)json_payload, .len = strlen(json_payload), .type = HTTPD_WS_TYPE_TEXT };
+                        httpd_ws_send_frame_async(server, client_fd, &ws_pkt);
+                    }
+                }
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
 }
 
 /**
@@ -161,20 +250,45 @@ void app_main(void) {
     peripherals_init();
     log_queue = xQueueCreate(LOG_QUEUE_SIZE, sizeof(log_msg_t));
 
+    // Инициализация сетевых интерфейсов под режим Клиента (STA)
     esp_netif_init();
     esp_event_loop_create_default();
-    esp_netif_create_default_wifi_ap();
+    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
+
+    // Фиксация статического IP-адреса Базы в подсети смартфона
+    esp_netif_dhcpc_stop(sta_netif);
+    esp_netif_ip_info_t ip_info;
+    IP4_ADDR(&ip_info.ip, STATIC_IP_ADDR);
+    IP4_ADDR(&ip_info.gw, STATIC_GW_ADDR);
+    IP4_ADDR(&ip_info.netmask, STATIC_NETMASK);
+    esp_netif_set_ip_info(sta_netif, &ip_info);
+
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     esp_wifi_init(&cfg);
-    esp_wifi_set_mode(WIFI_MODE_AP);
+
+    // Регистрация обработчиков событий Wi-Fi
+    esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, NULL);
+    esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, NULL);
+
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = WIFI_SSID,
+            .password = WIFI_PASS,
+        },
+    };
+    esp_wifi_set_mode(WIFI_MODE_STA);
+    esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
     esp_wifi_start();
 
-    /* Телеметрия на Ядро 0 */
+    /* Инициализация базового уровня радиопротокола */
     espnow_init_base();
+    // Переопределяем встроенный колбэк на наш сквозной WebSocket-мост
+    esp_now_register_recv_cb(on_base_espnow_recv);
 
-    /* Сеть и Логи на Ядро 1 */
+    /* Распределение задач по ядрам процессора */
     xTaskCreatePinnedToCore(network_stack_task, "net_task", 4096, NULL, 5, NULL, 1);
     xTaskCreatePinnedToCore(sd_log_async_task, "log_task", 4096, NULL, 4, NULL, 1);
+    xTaskCreatePinnedToCore(gps_task, "gps_task", 4096, NULL, 3, NULL, 0);
 
     ESP_LOGI(TAG, "Система VOSTOK NEXUS v5.1 S3 ULTRA PREMIUM запущена.");
 }
