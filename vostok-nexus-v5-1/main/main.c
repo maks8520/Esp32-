@@ -105,6 +105,17 @@ static void peripherals_init() {
     uart_param_config(UART_NUM_1, &uart_config);
     uart_set_pin(UART_NUM_1, PIN_GPS_TX, PIN_GPS_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     uart_driver_install(UART_NUM_1, 1024, 0, 0, NULL, 0);
+
+    /* Настройка кнопок на вход с подтяжкой к питанию */
+    gpio_config_t btn_conf = {
+        .pin_bit_mask = (1ULL << PIN_BUTTON_1) | (1ULL << PIN_BUTTON_2),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    gpio_config(&btn_conf);
+
 }
 
 /**
@@ -253,6 +264,121 @@ void sd_log_async_task(void *pvParameters) {
     }
 }
 
+
+/**
+ * @brief Задача для чтения и парсинга NMEA логов с GPS модуля
+ */
+void gps_task(void *pvParameters) {
+    uint8_t data[256];
+    char line[256];
+    int line_len = 0;
+
+    while (1) {
+        int rx_bytes = uart_read_bytes(UART_NUM_1, data, sizeof(data) - 1, pdMS_TO_TICKS(100));
+        if (rx_bytes > 0) {
+            for (int i = 0; i < rx_bytes; i++) {
+                if (data[i] == '\n' || data[i] == '\r') {
+                    if (line_len > 0) {
+                        line[line_len] = '\0';
+
+                        /* Поиск строки $GPGGA */
+                        if (strncmp(line, "$GPGGA", 6) == 0) {
+                            float raw_lat, raw_lon;
+                            char lat_dir, lon_dir;
+                            int fix_quality, satellites;
+
+                            /* Парсинг $GPGGA: $GPGGA,time,lat,N/S,lon,E/W,fix,satellites,... */
+                            if (sscanf(line, "$GPGGA,%*f,%f,%c,%f,%c,%d,%d", &raw_lat, &lat_dir, &raw_lon, &lon_dir, &fix_quality, &satellites) == 6) {
+                                if (fix_quality > 0) {
+                                    /* Перенос координат из DDMM.MMMM в Decimal Degrees */
+                                    int lat_deg = (int)(raw_lat / 100);
+                                    float lat_min = raw_lat - (lat_deg * 100);
+                                    float lat_dd = lat_deg + (lat_min / 60.0f);
+                                    if (lat_dir == 'S') lat_dd = -lat_dd;
+
+                                    int lon_deg = (int)(raw_lon / 100);
+                                    float lon_min = raw_lon - (lon_deg * 100);
+                                    float lon_dd = lon_deg + (lon_min / 60.0f);
+                                    if (lon_dir == 'W') lon_dd = -lon_dd;
+
+                                    /* Формирование JSON строки */
+                                    char json_str[128];
+                                    snprintf(json_str, sizeof(json_str), "{\"gps\": {\"lat\": %.6f, \"lon\": %.6f, \"satellites\": %d}}", lat_dd, lon_dd, satellites);
+
+                                    /* Асинхронная отправка JSON в активный WebSocket-клиент */
+                                    if (client_fd >= 0) {
+                                        httpd_ws_frame_t ws_pkt;
+                                        memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
+                                        ws_pkt.payload = (uint8_t*)json_str;
+                                        ws_pkt.len = strlen(json_str);
+                                        ws_pkt.type = HTTPD_WS_TYPE_TEXT;
+
+                                        httpd_ws_send_frame_async(server, client_fd, &ws_pkt);
+                                    }
+                                }
+                            }
+                        }
+                        line_len = 0;
+                    }
+                } else {
+                    if (line_len < sizeof(line) - 1) {
+                        line[line_len++] = (char)data[i];
+                    }
+                }
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+
+/**
+ * @brief Задача опроса кнопок с программным антидребезгом
+ */
+void base_buttons_task(void *pvParameters) {
+    int btn1_state = 1;
+    int btn2_state = 1;
+    int last_btn1_state = 1;
+    int last_btn2_state = 1;
+
+    while (1) {
+        int current_btn1 = gpio_get_level(PIN_BUTTON_1);
+        int current_btn2 = gpio_get_level(PIN_BUTTON_2);
+
+        /* Проверка кнопки 1 */
+        if (current_btn1 != last_btn1_state) {
+            vTaskDelay(pdMS_TO_TICKS(50)); /* Антидребезг */
+            current_btn1 = gpio_get_level(PIN_BUTTON_1);
+            if (current_btn1 != last_btn1_state) {
+                if (current_btn1 == 0) { /* Нажатие (переход с 1 на 0) */
+                    log_msg_t msg;
+                    snprintf(msg.data, sizeof(msg.data), "BUTTON 1 PRESSED");
+                    xQueueSend(log_queue, &msg, 0);
+                    ESP_LOGI(TAG, "BUTTON 1 PRESSED");
+                }
+                last_btn1_state = current_btn1;
+            }
+        }
+
+        /* Проверка кнопки 2 */
+        if (current_btn2 != last_btn2_state) {
+            vTaskDelay(pdMS_TO_TICKS(50)); /* Антидребезг */
+            current_btn2 = gpio_get_level(PIN_BUTTON_2);
+            if (current_btn2 != last_btn2_state) {
+                if (current_btn2 == 0) { /* Нажатие (переход с 1 на 0) */
+                    log_msg_t msg;
+                    snprintf(msg.data, sizeof(msg.data), "BUTTON 2 PRESSED");
+                    xQueueSend(log_queue, &msg, 0);
+                    ESP_LOGI(TAG, "BUTTON 2 PRESSED");
+                }
+                last_btn2_state = current_btn2;
+            }
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+}
+
 void app_main(void) {
     /* Инициализация NVS, SPIFFS и Периферии */
     nvs_init_storage();
@@ -299,6 +425,14 @@ void app_main(void) {
     xTaskCreatePinnedToCore(network_stack_task, "net_task", 4096, NULL, 5, NULL, 1);
     xTaskCreatePinnedToCore(sd_log_async_task, "log_task", 4096, NULL, 4, NULL, 1);
     xTaskCreatePinnedToCore(gps_task, "gps_task", 4096, NULL, 3, NULL, 0);
+
+    /* Задача GPS на Ядро 0 */
+    xTaskCreatePinnedToCore(gps_task, "gps_task", 4096, NULL, 3, NULL, 0);
+
+
+
+    /* Задача кнопок на Ядро 1 */
+    xTaskCreatePinnedToCore(base_buttons_task, "buttons_task", 4096, NULL, 3, NULL, 1);
 
     ESP_LOGI(TAG, "Система VOSTOK NEXUS v5.1 S3 ULTRA PREMIUM запущена.");
 }

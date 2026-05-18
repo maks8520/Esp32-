@@ -28,6 +28,9 @@
 #define PIN_DS18B20         14
 #define PIN_WS2812          48
 #define PIN_BUZZER          45
+#define PIN_BUTTON_1        6
+#define PIN_BUTTON_2        7
+
 
 /* Конфигурация задач */
 #define TASK_STACK_SIZE_CORE0  8192
