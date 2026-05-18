@@ -271,12 +271,12 @@ void app_main(void) {
     esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
 
     // БЕЗОПАСНАЯ И ПРАВИЛЬНАЯ ПООКТЕТНАЯ ПЕРЕДАЧА СТАТИЧЕСКОГО IP-АДРЕСА
-    esp_netif_dhcpc_stop(sta_netif);
-    esp_netif_ip_info_t ip_info;
-    IP4_ADDR(&ip_info.ip, IP_B1, IP_B2, IP_B3, IP_B4);
-    IP4_ADDR(&ip_info.gw, IP_B1, IP_B2, IP_B3, 1);
-    IP4_ADDR(&ip_info.netmask, 255, 255, 255, 0);
-    esp_netif_set_ip_info(sta_netif, &ip_info);
+   // esp_netif_dhcpc_stop(sta_netif);
+   // esp_netif_ip_info_t ip_info;
+   // IP4_ADDR(&ip_info.ip, IP_B1, IP_B2, IP_B3, IP_B4);
+   // IP4_ADDR(&ip_info.gw, IP_B1, IP_B2, IP_B3, 1);
+   // IP4_ADDR(&ip_info.netmask, 255, 255, 255, 0);
+    // esp_netif_set_ip_info(sta_netif, &ip_info);
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     esp_wifi_init(&cfg);
